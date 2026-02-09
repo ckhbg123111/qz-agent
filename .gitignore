@@ -36,3 +36,21 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Windows ###
+Thumbs.db
+Desktop.ini
+
+### Logs ###
+logs/
+*.log
+
+### Env files ###
+.env
+
+### Maven ###
+.mvn/wrapper/maven-wrapper.properties
+
+### OS / tooling ###
+.idea/
+out/
