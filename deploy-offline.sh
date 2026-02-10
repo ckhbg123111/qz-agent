@@ -17,21 +17,36 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 if [ ! -d "$IMAGES_DIR" ]; then
-  echo "镜像目录不存在: $IMAGES_DIR"
-  echo "用法: $0 [镜像目录]"
-  echo "请先将有网机上的 docker-images 目录（或你保存 tar 的目录）拷贝到本机，再执行此脚本."
-  exit 1
+  # 兼容旧目录名：dockerimages（无中划线）
+  if [ "$IMAGES_DIR" = "./docker-images" ] && [ -d "./dockerimages" ]; then
+    IMAGES_DIR="./dockerimages"
+    echo "提示：未找到 ./docker-images，自动使用 ./dockerimages"
+  else
+    echo "镜像目录不存在: $IMAGES_DIR"
+    echo "用法: $0 [镜像目录]"
+    echo "请先将有网机上的 docker-images 目录（或你保存 tar 的目录）拷贝到本机，再执行此脚本."
+    exit 1
+  fi
 fi
 
 IMAGES_DIR="$(cd "$IMAGES_DIR" && pwd)"
 echo "从目录加载镜像: $IMAGES_DIR"
+
+# 权限检测：能否访问 docker daemon
+if ! docker info >/dev/null 2>&1; then
+  echo "无法访问 Docker daemon（可能是权限不足）."
+  echo "请尝试："
+  echo "  1) sudo bash deploy-offline.sh \"$IMAGES_DIR\""
+  echo "  2) 或 sudo usermod -aG docker \$USER && 重新登录"
+  exit 1
+fi
 
 for f in "$IMAGES_DIR"/qz-agent.tar "$IMAGES_DIR"/mysql.tar "$IMAGES_DIR"/redis.tar; do
   if [ -f "$f" ]; then
     echo "加载: $f"
     docker load -i "$f"
   else
-    echo "跳过（文件不存在）: $f"
+    echo "警告：文件不存在，跳过: $f"
   fi
 done
 
