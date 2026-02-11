@@ -10,6 +10,8 @@ import jakarta.xml.ws.BindingProvider;
 import jakarta.xml.ws.Dispatch;
 import jakarta.xml.ws.Service;
 import jakarta.xml.ws.soap.SOAPBinding;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -18,6 +20,8 @@ import java.net.URL;
 
 @Component
 public class WechatPushClient {
+
+    private static final Logger log = LoggerFactory.getLogger(WechatPushClient.class);
 
     private final WechatPushProperties properties;
 
@@ -49,6 +53,7 @@ public class WechatPushClient {
             SOAPMessage request = buildRequest(bizcode, patientId, messageXml);
             dispatch.invoke(request);
         } catch (Exception e) {
+            log.error("微信推送接口调用失败: bizcode={}, patientId={}, endpoint={}", bizcode, patientId, resolveEndpoint(), e);
             throw new BizException(502, "微信推送接口调用失败");
         }
     }

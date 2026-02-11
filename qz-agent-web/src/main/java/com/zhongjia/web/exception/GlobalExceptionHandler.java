@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BizException.class)
     public Result<Void> handleBizException(BizException ex, HttpServletRequest request) {
-        log.warn("业务异常: uri={}, code={}, message={}", request.getRequestURI(), ex.getCode(), ex.getMessage());
+        log.warn("业务异常: uri={}, code={}, message={}", request.getRequestURI(), ex.getCode(), ex.getMessage(), ex);
         return Result.error(ex.getCode(), ex.getMessage());
     }
 

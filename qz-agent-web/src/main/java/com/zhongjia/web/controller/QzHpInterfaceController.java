@@ -16,6 +16,8 @@ import com.zhongjia.web.vo.wechat.WechatMessageResponseData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +36,7 @@ public class QzHpInterfaceController {
     private static final String TAG_LAB_APPOINTMENT = "UUID_EXAMPLE_1";
     private static final String TAG_REPORT = "UUID_EXAMPLE_2";
     private static final String TAG_PRESCRIPTION = "UUID_EXAMPLE_3";
+    private static final Logger LOGGER = LoggerFactory.getLogger(QzHpInterfaceController.class);
 
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -142,6 +145,7 @@ public class QzHpInterfaceController {
             wechatPushLogService.save(log);
             throw ex;
         } catch (Exception ex) {
+            LOGGER.error("微信推送处理失败: bizcode={}, patientId={}, tag={}", bizcode, log.getPatientId(), tag, ex);
             log.setErrorMessage("微信推送处理失败");
             wechatPushLogService.save(log);
             throw new BizException(500, "微信推送处理失败");
