@@ -33,14 +33,26 @@ services:
       - mysql
       - redis
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-qz_agent}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-qz_agent}?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-root}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-${MYSQL_ROOT_PASSWORD:-root}}
+      SPRING_REDIS_HOST: ${SPRING_REDIS_HOST:-redis}
+      SPRING_REDIS_PORT: ${SPRING_REDIS_PORT:-6379}
+      SPRING_REDIS_PASSWORD: ${SPRING_REDIS_PASSWORD:-${REDIS_PASSWORD:-}}
+      SPRING_REDIS_DATABASE: ${SPRING_REDIS_DATABASE:-0}
       JWT_SECRET: ${JWT_SECRET:-change-me-please}
       JWT_EXPIRE_SECONDS: ${JWT_EXPIRE_SECONDS:-3600}
+      WECHAT_MESSAGE_BASE_URL: ${WECHAT_MESSAGE_BASE_URL:-https://api.aiqikang.com}
+      WECHAT_MESSAGE_PATH: ${WECHAT_MESSAGE_PATH:-/api/b2b/wechat/message}
+      WECHAT_MESSAGE_APP_KEY: ${WECHAT_MESSAGE_APP_KEY:-qzhospital}
+      WECHAT_MESSAGE_APP_SECRET: ${WECHAT_MESSAGE_APP_SECRET:-}
+      WECHAT_PUSH_WSDL_URL: ${WECHAT_PUSH_WSDL_URL:-}
+      WECHAT_PUSH_ENDPOINT_URL: ${WECHAT_PUSH_ENDPOINT_URL:-}
+      WECHAT_PUSH_NAMESPACE: ${WECHAT_PUSH_NAMESPACE:-}
+      WECHAT_PUSH_SERVICE_NAME: ${WECHAT_PUSH_SERVICE_NAME:-}
+      WECHAT_PUSH_PORT_NAME: ${WECHAT_PUSH_PORT_NAME:-}
+      WECHAT_PUSH_METHOD_NAME: ${WECHAT_PUSH_METHOD_NAME:-}
+      LOG_PATH: ${LOG_PATH:-logs}
       JAVA_OPTS: ${JAVA_OPTS:-}
     ports:
       - "8082:8080"
