@@ -127,8 +127,8 @@ public class QzHpInterfaceController {
             String messageXml = buildPushMessageXml(data);
             log.setMessage(messageXml);
 
-            wechatPushClient.pushMessage(bizcode, log.getPatientId(), messageXml);
-            log.setPushStatus("SUCCESS");
+//            wechatPushClient.pushMessage(bizcode, log.getPatientId(), messageXml);
+            log.setPushStatus("WAITING CONFIG");
             wechatPushLogService.save(log);
             return data.getJumpLink();
         } catch (BizException ex) {
