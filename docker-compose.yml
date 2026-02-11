@@ -43,7 +43,7 @@ services:
       JWT_EXPIRE_SECONDS: ${JWT_EXPIRE_SECONDS:-3600}
       JAVA_OPTS: ${JAVA_OPTS:-}
     ports:
-      - "8080:8080"
+      - "8082:8080"
 
 volumes:
   mysql_data:
