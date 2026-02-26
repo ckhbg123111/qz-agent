@@ -2,9 +2,9 @@ package com.zhongjia.web.controller;
 
 import com.zhongjia.biz.entity.WechatPushLog;
 import com.zhongjia.biz.service.WechatPushLogService;
+import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.exception.BizException;
 import com.zhongjia.web.integration.wechat.WechatMessageClient;
-import com.zhongjia.web.integration.wechat.WechatPushClient;
 import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.qz.QzHpC13ReportRequest;
 import com.zhongjia.web.vo.qz.QzHpLabAppointmentRequest;
@@ -26,7 +26,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.UUID;
 
 @RestController
 @Tag(name = "依据检查信息返回宣教落地页对接接口（幽门螺杆菌例）")
@@ -41,16 +40,16 @@ public class QzHpInterfaceController {
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final WechatMessageClient wechatMessageClient;
-    private final WechatPushClient wechatPushClient;
+    private final WechatPushProperties wechatPushProperties;
     private final WechatPushLogService wechatPushLogService;
 
     public QzHpInterfaceController(
             WechatMessageClient wechatMessageClient,
-            WechatPushClient wechatPushClient,
+            WechatPushProperties wechatPushProperties,
             WechatPushLogService wechatPushLogService
     ) {
         this.wechatMessageClient = wechatMessageClient;
-        this.wechatPushClient = wechatPushClient;
+        this.wechatPushProperties = wechatPushProperties;
         this.wechatPushLogService = wechatPushLogService;
     }
 
@@ -109,7 +108,7 @@ public class QzHpInterfaceController {
     }
 
     private String pushAndLog(String tag, String patientId, WechatMessageRequest wechatRequest) {
-        String bizcode = UUID.randomUUID().toString();
+        String bizcode = resolveBizcode();
         WechatPushLog log = new WechatPushLog();
         log.setBizcode(bizcode);
         log.setPatientId(defaultString(patientId));
@@ -131,7 +130,7 @@ public class QzHpInterfaceController {
             log.setMessage(messageXml);
 
 //            wechatPushClient.pushMessage(bizcode, log.getPatientId(), messageXml);
-            log.setPushStatus("WAITING CONFIG");
+            log.setPushStatus("WAITING TEST");
             wechatPushLogService.save(log);
             return data.getJumpLink();
         } catch (BizException ex) {
@@ -185,6 +184,14 @@ public class QzHpInterfaceController {
 
     private String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private String resolveBizcode() {
+        String configuredBizcode = defaultString(wechatPushProperties.getBizcode());
+        if (configuredBizcode.isBlank()) {
+            return "yytz";
+        }
+        return configuredBizcode;
     }
 
     private String buildPushMessageXml(WechatMessageResponseData data) {

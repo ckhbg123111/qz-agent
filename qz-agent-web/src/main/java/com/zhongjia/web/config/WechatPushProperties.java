@@ -13,6 +13,8 @@ public class WechatPushProperties {
     private String serviceName;
     private String portName;
     private String methodName;
+    private String soapAction;
+    private String bizcode;
 
     public String getWsdlUrl() {
         return wsdlUrl;
@@ -60,5 +62,21 @@ public class WechatPushProperties {
 
     public void setMethodName(String methodName) {
         this.methodName = methodName;
+    }
+
+    public String getSoapAction() {
+        return soapAction;
+    }
+
+    public void setSoapAction(String soapAction) {
+        this.soapAction = soapAction;
+    }
+
+    public String getBizcode() {
+        return bizcode;
+    }
+
+    public void setBizcode(String bizcode) {
+        this.bizcode = bizcode;
     }
 }

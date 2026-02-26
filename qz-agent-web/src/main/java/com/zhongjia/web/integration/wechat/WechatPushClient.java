@@ -45,7 +45,7 @@ public class WechatPushClient {
             Service service = Service.create(wsdlUrl, serviceQName);
             Dispatch<SOAPMessage> dispatch = service.createDispatch(portQName, SOAPMessage.class, Service.Mode.MESSAGE);
             dispatch.getRequestContext().put(BindingProvider.SOAPACTION_USE_PROPERTY, Boolean.TRUE);
-            dispatch.getRequestContext().put(BindingProvider.SOAPACTION_URI_PROPERTY, properties.getMethodName());
+            dispatch.getRequestContext().put(BindingProvider.SOAPACTION_URI_PROPERTY, resolveSoapAction());
             dispatch.getRequestContext().put(BindingProvider.ENDPOINT_ADDRESS_PROPERTY, resolveEndpoint());
             dispatch.getRequestContext().put(BindingProvider.USERNAME_PROPERTY, null);
             dispatch.getRequestContext().put(BindingProvider.PASSWORD_PROPERTY, null);
@@ -65,6 +65,13 @@ public class WechatPushClient {
         String wsdl = properties.getWsdlUrl();
         int index = wsdl.indexOf("?");
         return index > 0 ? wsdl.substring(0, index) : wsdl;
+    }
+
+    private String resolveSoapAction() {
+        if (StringUtils.hasText(properties.getSoapAction())) {
+            return properties.getSoapAction();
+        }
+        return properties.getMethodName();
     }
 
     private SOAPMessage buildRequest(String bizcode, String patientId, String messageXml) throws Exception {
