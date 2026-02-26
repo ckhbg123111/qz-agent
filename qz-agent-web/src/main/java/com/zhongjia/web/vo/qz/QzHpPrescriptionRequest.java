@@ -2,6 +2,7 @@ package com.zhongjia.web.vo.qz;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import java.util.List;
 
 @Data
 @Schema(name = "QzHpPrescriptionRequest", description = "幽门螺杆菌处方推送请求")
@@ -30,6 +31,9 @@ public class QzHpPrescriptionRequest {
 
     @Schema(description = "治疗方法")
     private String therapy;
+
+    @Schema(description = "药品信息列表")
+    private List<String> medicines;
 
     @Schema(description = "医院")
     private String hospital;

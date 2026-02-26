@@ -26,6 +26,9 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 @Tag(name = "依据检查信息返回宣教落地页对接接口（幽门螺杆菌例）")
@@ -92,6 +95,7 @@ public class QzHpInterfaceController {
     @PostMapping("/prescription")
     @Operation(summary = "处方开具（推送）")
     public Result<QzHpLinkVO> prescription(@RequestBody @Valid QzHpPrescriptionRequest request) {
+        String prescriptionContent = resolvePrescriptionContent(request);
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 TAG_PRESCRIPTION,
                 request.getPatientId(),
@@ -99,12 +103,31 @@ public class QzHpInterfaceController {
                 request.getGender(),
                 request.getAge(),
                 request.getDiagnosis(),
-                request.getTherapy(),
+                prescriptionContent,
                 request.getPrescriptionDate(),
                 ""
         );
         String jumpLink = pushAndLog(TAG_PRESCRIPTION, request.getPatientId(), wechatRequest);
         return Result.success(QzHpLinkVO.of(jumpLink));
+    }
+
+    private String resolvePrescriptionContent(QzHpPrescriptionRequest request) {
+        String medicines = joinMedicines(request.getMedicines());
+        if (!medicines.isBlank()) {
+            return medicines;
+        }
+        return defaultString(request.getTherapy());
+    }
+
+    private String joinMedicines(List<String> medicines) {
+        if (medicines == null || medicines.isEmpty()) {
+            return "";
+        }
+        return medicines.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .collect(Collectors.joining("；"));
     }
 
     private String pushAndLog(String tag, String patientId, WechatMessageRequest wechatRequest) {
