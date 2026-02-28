@@ -21,6 +21,8 @@ public class WechatPushLog {
 
     private String message;
 
+    private String requestJson;
+
     private Integer wechatApiCode;
 
     private String wechatApiMessage;

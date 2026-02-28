@@ -1,5 +1,7 @@
 package com.zhongjia.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhongjia.biz.entity.WechatPushLog;
 import com.zhongjia.biz.service.WechatPushLogService;
 import com.zhongjia.web.config.WechatPushProperties;
@@ -45,15 +47,18 @@ public class QzHpInterfaceController {
     private final WechatMessageClient wechatMessageClient;
     private final WechatPushProperties wechatPushProperties;
     private final WechatPushLogService wechatPushLogService;
+    private final ObjectMapper objectMapper;
 
     public QzHpInterfaceController(
             WechatMessageClient wechatMessageClient,
             WechatPushProperties wechatPushProperties,
-            WechatPushLogService wechatPushLogService
+            WechatPushLogService wechatPushLogService,
+            ObjectMapper objectMapper
     ) {
         this.wechatMessageClient = wechatMessageClient;
         this.wechatPushProperties = wechatPushProperties;
         this.wechatPushLogService = wechatPushLogService;
+        this.objectMapper = objectMapper;
     }
 
     @PostMapping("/lab-appointment")
@@ -70,7 +75,7 @@ public class QzHpInterfaceController {
                 request.getApplyDate(),
                 ""
         );
-        String jumpLink = pushAndLog(TAG_LAB_APPOINTMENT, request.getPatientId(), wechatRequest);
+        String jumpLink = pushAndLog(TAG_LAB_APPOINTMENT, request.getPatientId(), wechatRequest, request);
         return Result.success(QzHpLinkVO.of(jumpLink));
     }
 
@@ -88,7 +93,7 @@ public class QzHpInterfaceController {
                 request.getTestDate(),
                 ""
         );
-        String jumpLink = pushAndLog(TAG_REPORT, request.getPatientId(), wechatRequest);
+        String jumpLink = pushAndLog(TAG_REPORT, request.getPatientId(), wechatRequest, request);
         return Result.success(QzHpLinkVO.of(jumpLink));
     }
 
@@ -107,7 +112,7 @@ public class QzHpInterfaceController {
                 request.getPrescriptionDate(),
                 ""
         );
-        String jumpLink = pushAndLog(TAG_PRESCRIPTION, request.getPatientId(), wechatRequest);
+        String jumpLink = pushAndLog(TAG_PRESCRIPTION, request.getPatientId(), wechatRequest, request);
         return Result.success(QzHpLinkVO.of(jumpLink));
     }
 
@@ -130,7 +135,7 @@ public class QzHpInterfaceController {
                 .collect(Collectors.joining("；"));
     }
 
-    private String pushAndLog(String tag, String patientId, WechatMessageRequest wechatRequest) {
+    private String pushAndLog(String tag, String patientId, WechatMessageRequest wechatRequest, Object rawRequest) {
         String bizcode = resolveBizcode();
         WechatPushLog log = new WechatPushLog();
         log.setBizcode(bizcode);
@@ -138,6 +143,7 @@ public class QzHpInterfaceController {
         log.setTag(defaultString(tag));
         log.setPushStatus("FAIL");
         log.setMessage("");
+        log.setRequestJson(toRequestJson(rawRequest));
         log.setCreateTime(LocalDateTime.now());
 
         try {
@@ -242,5 +248,17 @@ public class QzHpInterfaceController {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&apos;");
+    }
+
+    private String toRequestJson(Object rawRequest) {
+        if (rawRequest == null) {
+            return "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(rawRequest);
+        } catch (JsonProcessingException ex) {
+            LOGGER.warn("请求体序列化失败，使用降级内容记录日志", ex);
+            return "{\"serializeError\":\"REQUEST_JSON_SERIALIZE_FAILED\"}";
+        }
     }
 }
