@@ -30,6 +30,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @RestController
 @Tag(name = "依据检查信息返回宣教落地页对接接口（幽门螺杆菌例）")
@@ -88,8 +92,50 @@ public class QzHpInterfaceController {
     @PostMapping("/prescription")
     @Operation(summary = "处方开具（推送）")
     public Result<QzHpLinkVO> prescription(@RequestBody @Valid QzHpPrescriptionRequest request) {
+        String prescriptionTag = resolvePrescriptionTag(request);
+        String prescriptionContent = resolvePrescriptionContent(request);
+        WechatMessageRequest wechatRequest = buildWechatRequest(
+                prescriptionTag,
+                request.getPatientId(),
+                request.getPatientName(),
+                request.getGender(),
+                request.getAge(),
+                request.getDiagnosis(),
+                prescriptionContent,
+                request.getPrescriptionDate(),
+                ""
+        );
+        // 处方宣教内容由医院侧拿到 jumpLink 后自行推送；我方保留主动推送代码口子但默认不触发。
+        String jumpLink = pushAndLog(prescriptionTag, request.getPatientId(), wechatRequest, request);
         delayedPushTaskService.createFollowUpTask(request);
-        return Result.success(QzHpLinkVO.of(""));
+        return Result.success(QzHpLinkVO.of(jumpLink));
+    }
+
+    private String resolvePrescriptionTag(QzHpPrescriptionRequest request) {
+        String therapy = defaultString(request.getTherapy()).toLowerCase(Locale.ROOT);
+        if (therapy.contains("二联") || therapy.contains("2联")) {
+            return PushTaskConstants.TAG_PRESCRIPTION_2;
+        }
+        return PushTaskConstants.TAG_PRESCRIPTION;
+    }
+
+    private String resolvePrescriptionContent(QzHpPrescriptionRequest request) {
+        String medicines = joinMedicines(request.getMedicines());
+        if (!medicines.isBlank()) {
+            return medicines;
+        }
+        return defaultString(request.getTherapy());
+    }
+
+    private String joinMedicines(List<String> medicines) {
+        if (medicines == null || medicines.isEmpty()) {
+            return "";
+        }
+        return medicines.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .collect(Collectors.joining("；"));
     }
 
     private String pushAndLog(String tag, String patientId, WechatMessageRequest wechatRequest, Object rawRequest) {

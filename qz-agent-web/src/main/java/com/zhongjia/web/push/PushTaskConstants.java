@@ -8,6 +8,7 @@ public final class PushTaskConstants {
     public static final String TAG_LAB_APPOINTMENT = "UUID_EXAMPLE_1";
     public static final String TAG_REPORT = "UUID_EXAMPLE_3";
     public static final String TAG_PRESCRIPTION = "UUID_EXAMPLE_2";
+    public static final String TAG_PRESCRIPTION_2 = "UUID_EXAMPLE_7";
     public static final String TAG_FOLLOW_UP = "UUID_EXAMPLE_10";
 
     public static final String TASK_TYPE_REPORT_WARNING = "REPORT_WARNING";
