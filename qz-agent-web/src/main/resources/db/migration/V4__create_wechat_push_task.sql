@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS wechat_push_task (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    task_type VARCHAR(32) NOT NULL,
+    patient_id VARCHAR(64) NOT NULL,
+    tag VARCHAR(64) NOT NULL,
+    source_no VARCHAR(128) DEFAULT NULL,
+    idempotent_key VARCHAR(191) NOT NULL,
+    base_time DATETIME NOT NULL,
+    trigger_time DATETIME NOT NULL,
+    next_retry_time DATETIME NOT NULL,
+    retry_count INT NOT NULL DEFAULT 0,
+    max_retry_count INT NOT NULL DEFAULT 5,
+    status VARCHAR(32) NOT NULL,
+    enqueue_status VARCHAR(32) NOT NULL,
+    request_json TEXT NOT NULL,
+    last_error_message VARCHAR(255) DEFAULT NULL,
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_wechat_push_task_idempotent_key (idempotent_key),
+    KEY idx_wechat_push_task_due (status, next_retry_time),
+    KEY idx_wechat_push_task_enqueue (enqueue_status, status)
+);

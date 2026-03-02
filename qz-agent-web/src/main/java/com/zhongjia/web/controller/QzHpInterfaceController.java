@@ -7,6 +7,8 @@ import com.zhongjia.biz.service.WechatPushLogService;
 import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.exception.BizException;
 import com.zhongjia.web.integration.wechat.WechatMessageClient;
+import com.zhongjia.web.push.DelayedPushTaskService;
+import com.zhongjia.web.push.PushTaskConstants;
 import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.qz.QzHpC13ReportRequest;
 import com.zhongjia.web.vo.qz.QzHpLabAppointmentRequest;
@@ -28,20 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @RestController
 @Tag(name = "依据检查信息返回宣教落地页对接接口（幽门螺杆菌例）")
 @RequestMapping("/api/b2b/qz/hp")
 public class QzHpInterfaceController {
 
-    private static final String TAG_LAB_APPOINTMENT = "UUID_EXAMPLE_1"; // 检查前注意事项。检验预约后及时推送，由接口调用方推送
-    private static final String TAG_REPORT = "UUID_EXAMPLE_3"; // 高发预警 报告为阳性时间+2天的上午十点推送 我方主动推送
-    private static final String TAG_PRESCRIPTION = "UUID_EXAMPLE_2"; // 四联疗法用药提醒。处方开具后及时推送，由接口调用方推送
-    private static final String TAG_PRESCRIPTION_2 = "UUID_EXAMPLE_7"; // 二联疗法用药提醒。处方开具后及时推送（暂不考虑）
-    private static final String TAG_FOLLOW_UP = "UUID_EXAMPLE_10"; // 复查提醒，处方开具时间+14天的上午十点推送 我方主动推送
     private static final Logger LOGGER = LoggerFactory.getLogger(QzHpInterfaceController.class);
 
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -50,24 +44,27 @@ public class QzHpInterfaceController {
     private final WechatPushProperties wechatPushProperties;
     private final WechatPushLogService wechatPushLogService;
     private final ObjectMapper objectMapper;
+    private final DelayedPushTaskService delayedPushTaskService;
 
     public QzHpInterfaceController(
             WechatMessageClient wechatMessageClient,
             WechatPushProperties wechatPushProperties,
             WechatPushLogService wechatPushLogService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            DelayedPushTaskService delayedPushTaskService
     ) {
         this.wechatMessageClient = wechatMessageClient;
         this.wechatPushProperties = wechatPushProperties;
         this.wechatPushLogService = wechatPushLogService;
         this.objectMapper = objectMapper;
+        this.delayedPushTaskService = delayedPushTaskService;
     }
 
     @PostMapping("/lab-appointment")
     @Operation(summary = "检验预约（推送）")
     public Result<QzHpLinkVO> labAppointment(@RequestBody @Valid QzHpLabAppointmentRequest request) {
         WechatMessageRequest wechatRequest = buildWechatRequest(
-                TAG_LAB_APPOINTMENT,
+                PushTaskConstants.TAG_LAB_APPOINTMENT,
                 request.getPatientId(),
                 request.getPatientName(),
                 request.getGender(),
@@ -77,65 +74,22 @@ public class QzHpInterfaceController {
                 request.getApplyDate(),
                 ""
         );
-        String jumpLink = pushAndLog(TAG_LAB_APPOINTMENT, request.getPatientId(), wechatRequest, request);
+        String jumpLink = pushAndLog(PushTaskConstants.TAG_LAB_APPOINTMENT, request.getPatientId(), wechatRequest, request);
         return Result.success(QzHpLinkVO.of(jumpLink));
     }
 
     @PostMapping("/report")
     @Operation(summary = "检验报告（推送）")
     public Result<QzHpLinkVO> report(@RequestBody @Valid QzHpC13ReportRequest request) {
-        // fixme 不再及时推送，返回的链接为空字符串
-        WechatMessageRequest wechatRequest = buildWechatRequest(
-                TAG_REPORT,
-                request.getPatientId(),
-                request.getPatientName(),
-                request.getGender(),
-                request.getAge(),
-                "",
-                "",
-                request.getTestDate(),
-                ""
-        );
-        String jumpLink = pushAndLog(TAG_REPORT, request.getPatientId(), wechatRequest, request);
+        delayedPushTaskService.createReportWarningTask(request);
         return Result.success(QzHpLinkVO.of(""));
     }
 
     @PostMapping("/prescription")
     @Operation(summary = "处方开具（推送）")
     public Result<QzHpLinkVO> prescription(@RequestBody @Valid QzHpPrescriptionRequest request) {
-        String prescriptionContent = resolvePrescriptionContent(request);
-        WechatMessageRequest wechatRequest = buildWechatRequest(
-                TAG_PRESCRIPTION,
-                request.getPatientId(),
-                request.getPatientName(),
-                request.getGender(),
-                request.getAge(),
-                request.getDiagnosis(),
-                prescriptionContent,
-                request.getPrescriptionDate(),
-                ""
-        );
-        String jumpLink = pushAndLog(TAG_PRESCRIPTION, request.getPatientId(), wechatRequest, request);
-        return Result.success(QzHpLinkVO.of(jumpLink));
-    }
-
-    private String resolvePrescriptionContent(QzHpPrescriptionRequest request) {
-        String medicines = joinMedicines(request.getMedicines());
-        if (!medicines.isBlank()) {
-            return medicines;
-        }
-        return defaultString(request.getTherapy());
-    }
-
-    private String joinMedicines(List<String> medicines) {
-        if (medicines == null || medicines.isEmpty()) {
-            return "";
-        }
-        return medicines.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(item -> !item.isBlank())
-                .collect(Collectors.joining("；"));
+        delayedPushTaskService.createFollowUpTask(request);
+        return Result.success(QzHpLinkVO.of(""));
     }
 
     private String pushAndLog(String tag, String patientId, WechatMessageRequest wechatRequest, Object rawRequest) {

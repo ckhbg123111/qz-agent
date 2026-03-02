@@ -1,0 +1,255 @@
+package com.zhongjia.web.push;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.zhongjia.biz.entity.WechatPushLog;
+import com.zhongjia.biz.entity.WechatPushTask;
+import com.zhongjia.biz.service.WechatPushLogService;
+import com.zhongjia.biz.service.WechatPushTaskService;
+import com.zhongjia.web.config.PushTaskProperties;
+import com.zhongjia.web.config.WechatPushProperties;
+import com.zhongjia.web.integration.wechat.WechatMessageClient;
+import com.zhongjia.web.integration.wechat.WechatPushClient;
+import com.zhongjia.web.vo.wechat.WechatMessageRequest;
+import com.zhongjia.web.vo.wechat.WechatMessageResponse;
+import com.zhongjia.web.vo.wechat.WechatMessageResponseData;
+import io.micrometer.core.instrument.MeterRegistry;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Component;
+
+@Component
+public class DelayedPushTaskDispatcher {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DelayedPushTaskDispatcher.class);
+    private static final ZoneId SHANGHAI_ZONE_ID = ZoneId.of("Asia/Shanghai");
+    private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final StringRedisTemplate stringRedisTemplate;
+    private final PushTaskProperties pushTaskProperties;
+    private final WechatPushTaskService wechatPushTaskService;
+    private final WechatPushLogService wechatPushLogService;
+    private final WechatMessageClient wechatMessageClient;
+    private final WechatPushClient wechatPushClient;
+    private final WechatPushProperties wechatPushProperties;
+    private final ObjectMapper objectMapper;
+    private final DelayedPushTaskService delayedPushTaskService;
+    private final MeterRegistry meterRegistry;
+
+    public DelayedPushTaskDispatcher(
+            StringRedisTemplate stringRedisTemplate,
+            PushTaskProperties pushTaskProperties,
+            WechatPushTaskService wechatPushTaskService,
+            WechatPushLogService wechatPushLogService,
+            WechatMessageClient wechatMessageClient,
+            WechatPushClient wechatPushClient,
+            WechatPushProperties wechatPushProperties,
+            ObjectMapper objectMapper,
+            DelayedPushTaskService delayedPushTaskService,
+            MeterRegistry meterRegistry
+    ) {
+        this.stringRedisTemplate = stringRedisTemplate;
+        this.pushTaskProperties = pushTaskProperties;
+        this.wechatPushTaskService = wechatPushTaskService;
+        this.wechatPushLogService = wechatPushLogService;
+        this.wechatMessageClient = wechatMessageClient;
+        this.wechatPushClient = wechatPushClient;
+        this.wechatPushProperties = wechatPushProperties;
+        this.objectMapper = objectMapper;
+        this.delayedPushTaskService = delayedPushTaskService;
+        this.meterRegistry = meterRegistry;
+    }
+
+    @Scheduled(fixedDelayString = "${push.task.consumer-fixed-delay-ms:5000}")
+    public void dispatchDueTasks() {
+        long nowEpochMillis = System.currentTimeMillis();
+        Set<String> dueMembers = stringRedisTemplate.opsForZSet().rangeByScore(
+                pushTaskProperties.getZsetKey(),
+                0,
+                nowEpochMillis,
+                0,
+                pushTaskProperties.getBatchSize()
+        );
+        if (dueMembers == null || dueMembers.isEmpty()) {
+            return;
+        }
+        for (String member : dueMembers) {
+            if (member == null || member.isBlank()) {
+                continue;
+            }
+            Long removed = stringRedisTemplate.opsForZSet().remove(pushTaskProperties.getZsetKey(), member);
+            if (removed == null || removed == 0) {
+                continue;
+            }
+            processTaskMember(member);
+        }
+    }
+
+    private void processTaskMember(String member) {
+        Long taskId;
+        try {
+            taskId = Long.valueOf(member);
+        } catch (NumberFormatException ex) {
+            LOGGER.warn("无效推送任务成员: {}", member);
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
+        boolean claimed = wechatPushTaskService.lambdaUpdate()
+                .eq(WechatPushTask::getId, taskId)
+                .in(WechatPushTask::getStatus, PushTaskConstants.TASK_STATUS_PENDING, PushTaskConstants.TASK_STATUS_FAILED)
+                .le(WechatPushTask::getNextRetryTime, now)
+                .set(WechatPushTask::getStatus, PushTaskConstants.TASK_STATUS_SENDING)
+                .set(WechatPushTask::getUpdateTime, now)
+                .update();
+        if (!claimed) {
+            return;
+        }
+
+        WechatPushTask task = wechatPushTaskService.getById(taskId);
+        if (task == null) {
+            return;
+        }
+        executeTask(task);
+    }
+
+    private void executeTask(WechatPushTask task) {
+        LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
+        WechatPushLog pushLog = buildInitPushLog(task);
+        try {
+            WechatMessageRequest messageRequest = objectMapper.readValue(task.getRequestJson(), WechatMessageRequest.class);
+            WechatMessageResponse response = wechatMessageClient.fetchMessage(messageRequest);
+            WechatMessageResponseData data = response.getData();
+            String messageXml = buildPushMessageXml(data);
+            String bizcode = resolveBizcode();
+            wechatPushClient.pushMessage(bizcode, task.getPatientId(), messageXml);
+
+            pushLog.setWechatApiCode(response.getCode());
+            pushLog.setWechatApiMessage(response.getMessage());
+            pushLog.setJumpLink(data.getJumpLink());
+            pushLog.setMessage(messageXml);
+            pushLog.setPushStatus(PushTaskConstants.TASK_STATUS_SUCCESS);
+            wechatPushLogService.save(pushLog);
+
+            wechatPushTaskService.lambdaUpdate()
+                    .eq(WechatPushTask::getId, task.getId())
+                    .set(WechatPushTask::getStatus, PushTaskConstants.TASK_STATUS_SUCCESS)
+                    .set(WechatPushTask::getEnqueueStatus, PushTaskConstants.ENQUEUE_STATUS_ENQUEUED)
+                    .set(WechatPushTask::getLastErrorMessage, "")
+                    .set(WechatPushTask::getUpdateTime, now)
+                    .update();
+            meterRegistry.counter("push.task.dispatch.success", "taskType", task.getTaskType()).increment();
+            LOGGER.info("延时推送成功: taskId={}, taskType={}, patientId={}, retryCount={}",
+                    task.getId(), task.getTaskType(), task.getPatientId(), task.getRetryCount());
+        } catch (Exception ex) {
+            LOGGER.error("延时推送执行失败: taskId={}, patientId={}, tag={}", task.getId(), task.getPatientId(), task.getTag(), ex);
+            handleTaskFailure(task, pushLog, ex, now);
+        }
+    }
+
+    private void handleTaskFailure(WechatPushTask task, WechatPushLog pushLog, Exception ex, LocalDateTime now) {
+        pushLog.setErrorMessage(ex.getMessage());
+        wechatPushLogService.save(pushLog);
+
+        int currentRetry = task.getRetryCount() == null ? 0 : task.getRetryCount();
+        int nextRetryCount = currentRetry + 1;
+        int maxRetryCount = task.getMaxRetryCount() == null ? pushTaskProperties.getMaxRetryCount() : task.getMaxRetryCount();
+        if (nextRetryCount > maxRetryCount) {
+            wechatPushTaskService.lambdaUpdate()
+                    .eq(WechatPushTask::getId, task.getId())
+                    .set(WechatPushTask::getStatus, PushTaskConstants.TASK_STATUS_DEAD)
+                    .set(WechatPushTask::getEnqueueStatus, PushTaskConstants.ENQUEUE_STATUS_DEAD)
+                    .set(WechatPushTask::getRetryCount, nextRetryCount)
+                    .set(WechatPushTask::getLastErrorMessage, trimErrorMessage(ex.getMessage()))
+                    .set(WechatPushTask::getUpdateTime, now)
+                    .update();
+            meterRegistry.counter("push.task.dispatch.dead", "taskType", task.getTaskType()).increment();
+            return;
+        }
+
+        LocalDateTime nextRetryTime = now.plusMinutes(calculateRetryDelayMinutes(nextRetryCount));
+        boolean enqueueSuccess = delayedPushTaskService.enqueueTask(task.getId(), nextRetryTime);
+        wechatPushTaskService.lambdaUpdate()
+                .eq(WechatPushTask::getId, task.getId())
+                .set(WechatPushTask::getStatus, PushTaskConstants.TASK_STATUS_FAILED)
+                .set(WechatPushTask::getRetryCount, nextRetryCount)
+                .set(WechatPushTask::getNextRetryTime, nextRetryTime)
+                .set(WechatPushTask::getLastErrorMessage, trimErrorMessage(ex.getMessage()))
+                .set(WechatPushTask::getEnqueueStatus, enqueueSuccess
+                        ? PushTaskConstants.ENQUEUE_STATUS_ENQUEUED
+                        : PushTaskConstants.ENQUEUE_STATUS_WAITING)
+                .set(WechatPushTask::getUpdateTime, now)
+                .update();
+        meterRegistry.counter("push.task.dispatch.failed", "taskType", task.getTaskType()).increment();
+    }
+
+    private int calculateRetryDelayMinutes(int retryCount) {
+        int cappedRetry = Math.min(retryCount, 6);
+        int multiplier = 1 << Math.max(cappedRetry - 1, 0);
+        return pushTaskProperties.getBaseRetryDelayMinutes() * multiplier;
+    }
+
+    private WechatPushLog buildInitPushLog(WechatPushTask task) {
+        WechatPushLog log = new WechatPushLog();
+        log.setBizcode(resolveBizcode());
+        log.setPatientId(defaultString(task.getPatientId()));
+        log.setTag(defaultString(task.getTag()));
+        log.setPushStatus(PushTaskConstants.TASK_STATUS_FAILED);
+        log.setMessage("");
+        log.setRequestJson(defaultString(task.getRequestJson()));
+        log.setCreateTime(LocalDateTime.now(SHANGHAI_ZONE_ID));
+        return log;
+    }
+
+    private String resolveBizcode() {
+        String configuredBizcode = defaultString(wechatPushProperties.getBizcode());
+        if (configuredBizcode.isBlank()) {
+            return "yytz";
+        }
+        return configuredBizcode;
+    }
+
+    private String buildPushMessageXml(WechatMessageResponseData data) {
+        String title = defaultString(data.getReplyTitle());
+        String description = defaultString(data.getReplyDescription());
+        String keyword2 = description.isBlank() ? title : description;
+        String pushTime = LocalDateTime.now(SHANGHAI_ZONE_ID).format(PUSH_TIME_FORMATTER);
+        String jumpLink = defaultString(data.getJumpLink());
+
+        return "<message>"
+                + "<first>" + escapeXml(title) + "</first>"
+                + "<keyword1>" + escapeXml(pushTime) + "</keyword1>"
+                + "<keyword2>" + escapeXml(keyword2) + "</keyword2>"
+                + "<remark/>"
+                + "<hisURL>" + escapeXml(jumpLink) + "</hisURL>"
+                + "</message>";
+    }
+
+    private String escapeXml(String value) {
+        if (value == null || value.isEmpty()) {
+            return "";
+        }
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
+    private String trimErrorMessage(String value) {
+        String message = defaultString(value);
+        if (message.length() <= 255) {
+            return message;
+        }
+        return message.substring(0, 255);
+    }
+
+    private String defaultString(String value) {
+        return value == null ? "" : value;
+    }
+}
