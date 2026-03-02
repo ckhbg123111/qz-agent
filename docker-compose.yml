@@ -54,6 +54,13 @@ services:
       WECHAT_PUSH_METHOD_NAME: ${WECHAT_PUSH_METHOD_NAME:-}
       LOG_PATH: ${LOG_PATH:-logs}
       JAVA_OPTS: ${JAVA_OPTS:-}
+    volumes:
+      - ./logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "10"
     ports:
       - "8082:8080"
 
