@@ -37,9 +37,11 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/b2b/qz/hp")
 public class QzHpInterfaceController {
 
-    private static final String TAG_LAB_APPOINTMENT = "UUID_EXAMPLE_1";
-    private static final String TAG_REPORT = "UUID_EXAMPLE_3";
-    private static final String TAG_PRESCRIPTION = "UUID_EXAMPLE_2";
+    private static final String TAG_LAB_APPOINTMENT = "UUID_EXAMPLE_1"; // 检查前注意事项。检验预约后及时推送，由接口调用方推送
+    private static final String TAG_REPORT = "UUID_EXAMPLE_3"; // 高发预警 报告为阳性时间+2天的上午十点推送 我方主动推送
+    private static final String TAG_PRESCRIPTION = "UUID_EXAMPLE_2"; // 四联疗法用药提醒。处方开具后及时推送，由接口调用方推送
+    private static final String TAG_PRESCRIPTION_2 = "UUID_EXAMPLE_7"; // 二联疗法用药提醒。处方开具后及时推送（暂不考虑）
+    private static final String TAG_FOLLOW_UP = "UUID_EXAMPLE_10"; // 复查提醒，处方开具时间+14天的上午十点推送 我方主动推送
     private static final Logger LOGGER = LoggerFactory.getLogger(QzHpInterfaceController.class);
 
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -82,6 +84,7 @@ public class QzHpInterfaceController {
     @PostMapping("/report")
     @Operation(summary = "检验报告（推送）")
     public Result<QzHpLinkVO> report(@RequestBody @Valid QzHpC13ReportRequest request) {
+        // fixme 不再及时推送，返回的链接为空字符串
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 TAG_REPORT,
                 request.getPatientId(),
