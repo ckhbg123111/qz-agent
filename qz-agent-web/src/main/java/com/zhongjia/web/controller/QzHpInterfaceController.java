@@ -82,18 +82,18 @@ public class QzHpInterfaceController {
     @PostMapping("/report")
     @Operation(summary = "检验报告（推送）")
     public Result<QzHpLinkVO> report(@RequestBody @Valid QzHpC13ReportRequest request) {
-//        WechatMessageRequest wechatRequest = buildWechatRequest(
-//                TAG_REPORT,
-//                request.getPatientId(),
-//                request.getPatientName(),
-//                request.getGender(),
-//                request.getAge(),
-//                "",
-//                "",
-//                request.getTestDate(),
-//                ""
-//        );
-//        String jumpLink = pushAndLog(TAG_REPORT, request.getPatientId(), wechatRequest, request);
+        WechatMessageRequest wechatRequest = buildWechatRequest(
+                TAG_REPORT,
+                request.getPatientId(),
+                request.getPatientName(),
+                request.getGender(),
+                request.getAge(),
+                "",
+                "",
+                request.getTestDate(),
+                ""
+        );
+        String jumpLink = pushAndLog(TAG_REPORT, request.getPatientId(), wechatRequest, request);
         return Result.success(QzHpLinkVO.of(""));
     }
 
