@@ -27,6 +27,8 @@ public class PushTaskProperties {
 
     private int followUpDelayMinutesForTest = 4;
 
+    private String testFixedPatientId = "";
+
     public String getZsetKey() {
         return zsetKey;
     }
@@ -105,5 +107,13 @@ public class PushTaskProperties {
 
     public void setFollowUpDelayMinutesForTest(int followUpDelayMinutesForTest) {
         this.followUpDelayMinutesForTest = followUpDelayMinutesForTest;
+    }
+
+    public String getTestFixedPatientId() {
+        return testFixedPatientId;
+    }
+
+    public void setTestFixedPatientId(String testFixedPatientId) {
+        this.testFixedPatientId = testFixedPatientId;
     }
 }

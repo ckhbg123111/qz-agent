@@ -2,6 +2,7 @@ package com.zhongjia.web.controller;
 
 import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.integration.wechat.WechatPushClient;
+import com.zhongjia.web.push.DelayedPushTaskService;
 import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.test.TestWechatPushRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,17 +21,24 @@ public class TestController {
 
     private final WechatPushClient wechatPushClient;
     private final WechatPushProperties wechatPushProperties;
+    private final DelayedPushTaskService delayedPushTaskService;
 
-    public TestController(WechatPushClient wechatPushClient, WechatPushProperties wechatPushProperties) {
+    public TestController(
+            WechatPushClient wechatPushClient,
+            WechatPushProperties wechatPushProperties,
+            DelayedPushTaskService delayedPushTaskService
+    ) {
         this.wechatPushClient = wechatPushClient;
         this.wechatPushProperties = wechatPushProperties;
+        this.delayedPushTaskService = delayedPushTaskService;
     }
 
     @PostMapping("/wechat/push")
     @Operation(summary = "手工触发微信SOAP推送")
     public Result<String> testWechatPush(@RequestBody @Valid TestWechatPushRequest request) {
         String bizcode = resolveBizcode(request.getBizcode());
-        wechatPushClient.pushMessage(bizcode, request.getPatientId(), request.getMessageXml());
+        String effectivePatientId = delayedPushTaskService.resolvePatientIdForPush(request.getPatientId());
+        wechatPushClient.pushMessage(bizcode, effectivePatientId, request.getMessageXml());
         return Result.success("推送已触发");
     }
 

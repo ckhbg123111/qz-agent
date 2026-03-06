@@ -67,9 +67,10 @@ public class QzHpInterfaceController {
     @PostMapping("/lab-appointment")
     @Operation(summary = "检验预约（推送）")
     public Result<QzHpLinkVO> labAppointment(@RequestBody @Valid QzHpLabAppointmentRequest request) {
+        String effectivePatientId = delayedPushTaskService.resolvePatientIdForPush(request.getPatientId());
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 PushTaskConstants.TAG_LAB_APPOINTMENT,
-                request.getPatientId(),
+                effectivePatientId,
                 request.getPatientName(),
                 request.getGender(),
                 request.getAge(),
@@ -78,7 +79,7 @@ public class QzHpInterfaceController {
                 request.getApplyDate(),
                 ""
         );
-        String jumpLink = pushAndLog(PushTaskConstants.TAG_LAB_APPOINTMENT, request.getPatientId(), wechatRequest, request);
+        String jumpLink = pushAndLog(PushTaskConstants.TAG_LAB_APPOINTMENT, effectivePatientId, wechatRequest, request);
         return Result.success(QzHpLinkVO.of(jumpLink));
     }
 
@@ -94,9 +95,10 @@ public class QzHpInterfaceController {
     public Result<QzHpLinkVO> prescription(@RequestBody @Valid QzHpPrescriptionRequest request) {
         String prescriptionTag = resolvePrescriptionTag(request);
         String prescriptionContent = resolvePrescriptionContent(request);
+        String effectivePatientId = delayedPushTaskService.resolvePatientIdForPush(request.getPatientId());
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 prescriptionTag,
-                request.getPatientId(),
+                effectivePatientId,
                 request.getPatientName(),
                 request.getGender(),
                 request.getAge(),
@@ -106,7 +108,7 @@ public class QzHpInterfaceController {
                 ""
         );
         // 处方宣教内容由医院侧拿到 jumpLink 后自行推送；我方保留主动推送代码口子但默认不触发。
-        String jumpLink = pushAndLog(prescriptionTag, request.getPatientId(), wechatRequest, request);
+        String jumpLink = pushAndLog(prescriptionTag, effectivePatientId, wechatRequest, request);
         delayedPushTaskService.createFollowUpTask(request);
         return Result.success(QzHpLinkVO.of(jumpLink));
     }

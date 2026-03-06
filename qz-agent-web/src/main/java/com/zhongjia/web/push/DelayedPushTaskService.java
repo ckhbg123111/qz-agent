@@ -55,9 +55,10 @@ public class DelayedPushTaskService {
         LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
         LocalDateTime baseTime = resolveBusinessTime(request.getTestDate(), now);
         LocalDateTime triggerTime = calculateReportTriggerTime(baseTime, now);
+        String effectivePatientId = resolvePatientIdForPush(request.getPatientId());
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 PushTaskConstants.TAG_REPORT,
-                request.getPatientId(),
+                effectivePatientId,
                 request.getPatientName(),
                 request.getGender(),
                 request.getAge(),
@@ -69,7 +70,7 @@ public class DelayedPushTaskService {
         String sourceNo = firstNonBlank(request.getReportNo(), request.getVisitNo());
         return createTask(
                 PushTaskConstants.TASK_TYPE_REPORT_WARNING,
-                request.getPatientId(),
+                effectivePatientId,
                 PushTaskConstants.TAG_REPORT,
                 sourceNo,
                 baseTime,
@@ -82,9 +83,10 @@ public class DelayedPushTaskService {
         LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
         LocalDateTime baseTime = resolveBusinessTime(request.getPrescriptionDate(), now);
         LocalDateTime triggerTime = calculateFollowUpTriggerTime(baseTime, now);
+        String effectivePatientId = resolvePatientIdForPush(request.getPatientId());
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 PushTaskConstants.TAG_FOLLOW_UP,
-                request.getPatientId(),
+                effectivePatientId,
                 request.getPatientName(),
                 request.getGender(),
                 request.getAge(),
@@ -96,7 +98,7 @@ public class DelayedPushTaskService {
         String sourceNo = defaultString(request.getVisitNo());
         return createTask(
                 PushTaskConstants.TASK_TYPE_FOLLOW_UP_REMINDER,
-                request.getPatientId(),
+                effectivePatientId,
                 PushTaskConstants.TAG_FOLLOW_UP,
                 sourceNo,
                 baseTime,
@@ -190,6 +192,19 @@ public class DelayedPushTaskService {
 
     private String buildIdempotentKey(String taskType, String patientId, String sourceNo, LocalDateTime triggerTime) {
         return taskType + "|" + patientId + "|" + defaultString(sourceNo) + "|" + triggerTime;
+    }
+
+    public String resolvePatientIdForPush(String patientId) {
+        String normalizedPatientId = defaultString(patientId).trim();
+        if (!pushTaskProperties.isTestMode()) {
+            return normalizedPatientId;
+        }
+        String fixedPatientId = defaultString(pushTaskProperties.getTestFixedPatientId()).trim();
+        if (fixedPatientId.isEmpty()) {
+            LOGGER.warn("测试模式已开启但未配置 push.task.test-fixed-patient-id，沿用请求 patientId");
+            return normalizedPatientId;
+        }
+        return fixedPatientId;
     }
 
     private LocalDateTime calculateReportTriggerTime(LocalDateTime baseTime, LocalDateTime now) {
