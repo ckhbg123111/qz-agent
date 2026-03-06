@@ -54,7 +54,7 @@ public class DelayedPushTaskService {
     public Long createReportWarningTask(QzHpC13ReportRequest request) {
         LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
         LocalDateTime baseTime = resolveBusinessTime(request.getTestDate(), now);
-        LocalDateTime triggerTime = toMorningTen(baseTime.plusDays(2));
+        LocalDateTime triggerTime = calculateReportTriggerTime(baseTime, now);
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 PushTaskConstants.TAG_REPORT,
                 request.getPatientId(),
@@ -81,7 +81,7 @@ public class DelayedPushTaskService {
     public Long createFollowUpTask(QzHpPrescriptionRequest request) {
         LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
         LocalDateTime baseTime = resolveBusinessTime(request.getPrescriptionDate(), now);
-        LocalDateTime triggerTime = toMorningTen(baseTime.plusDays(14));
+        LocalDateTime triggerTime = calculateFollowUpTriggerTime(baseTime, now);
         WechatMessageRequest wechatRequest = buildWechatRequest(
                 PushTaskConstants.TAG_FOLLOW_UP,
                 request.getPatientId(),
@@ -192,8 +192,29 @@ public class DelayedPushTaskService {
         return taskType + "|" + patientId + "|" + defaultString(sourceNo) + "|" + triggerTime;
     }
 
-    private LocalDateTime toMorningTen(LocalDateTime time) {
-        return time.toLocalDate().atTime(10, 0, 0);
+    private LocalDateTime calculateReportTriggerTime(LocalDateTime baseTime, LocalDateTime now) {
+        if (pushTaskProperties.isTestMode()) {
+            return now.plusMinutes(Math.max(pushTaskProperties.getReportDelayMinutesForTest(), 1));
+        }
+        int delayDays = Math.max(pushTaskProperties.getReportDelayDays(), 0);
+        return toConfiguredHour(baseTime.plusDays(delayDays));
+    }
+
+    private LocalDateTime calculateFollowUpTriggerTime(LocalDateTime baseTime, LocalDateTime now) {
+        if (pushTaskProperties.isTestMode()) {
+            return now.plusMinutes(Math.max(pushTaskProperties.getFollowUpDelayMinutesForTest(), 1));
+        }
+        int delayDays = Math.max(pushTaskProperties.getFollowUpDelayDays(), 0);
+        return toConfiguredHour(baseTime.plusDays(delayDays));
+    }
+
+    private LocalDateTime toConfiguredHour(LocalDateTime time) {
+        int hour = pushTaskProperties.getTriggerHour();
+        if (hour < 0 || hour > 23) {
+            LOGGER.warn("push.task.trigger-hour={} 非法，回退到10点", hour);
+            hour = 10;
+        }
+        return time.toLocalDate().atTime(hour, 0, 0);
     }
 
     private String toIsoOffset(LocalDateTime time) {
