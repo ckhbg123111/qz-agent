@@ -3,13 +3,14 @@ package com.zhongjia.web.integration.wechat;
 import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.exception.BizException;
 import jakarta.xml.soap.MessageFactory;
+import jakarta.xml.soap.SOAPConstants;
 import jakarta.xml.soap.SOAPBody;
 import jakarta.xml.soap.SOAPBodyElement;
+import jakarta.xml.soap.SOAPEnvelope;
 import jakarta.xml.soap.SOAPMessage;
 import jakarta.xml.ws.BindingProvider;
 import jakarta.xml.ws.Dispatch;
 import jakarta.xml.ws.Service;
-import jakarta.xml.ws.soap.SOAPBinding;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -75,14 +76,18 @@ public class WechatPushClient {
     }
 
     private SOAPMessage buildRequest(String bizcode, String patientId, String messageXml) throws Exception {
-        MessageFactory messageFactory = MessageFactory.newInstance(SOAPBinding.SOAP11HTTP_BINDING);
+        MessageFactory messageFactory = MessageFactory.newInstance(SOAPConstants.SOAP_1_1_PROTOCOL);
         SOAPMessage soapMessage = messageFactory.createMessage();
+        SOAPEnvelope envelope = soapMessage.getSOAPPart().getEnvelope();
+        String namespace = properties.getNamespace();
+        String prefix = "dhc";
+        envelope.addNamespaceDeclaration(prefix, namespace);
         SOAPBody body = soapMessage.getSOAPBody();
-        QName methodQName = new QName(properties.getNamespace(), properties.getMethodName());
+        QName methodQName = new QName(namespace, properties.getMethodName(), prefix);
         SOAPBodyElement methodElement = body.addBodyElement(methodQName);
-        methodElement.addChildElement("bizcode").addTextNode(bizcode);
-        methodElement.addChildElement("message").addTextNode(messageXml);
-        methodElement.addChildElement("patientId").addTextNode(patientId);
+        methodElement.addChildElement(new QName(namespace, "bizcode", prefix)).addTextNode(bizcode);
+        methodElement.addChildElement(new QName(namespace, "message", prefix)).addTextNode(messageXml);
+        methodElement.addChildElement(new QName(namespace, "patientId", prefix)).addTextNode(patientId);
         soapMessage.saveChanges();
         return soapMessage;
     }
