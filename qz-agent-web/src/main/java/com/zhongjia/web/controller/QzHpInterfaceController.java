@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhongjia.biz.entity.WechatPushLog;
 import com.zhongjia.biz.service.WechatPushLogService;
+import com.zhongjia.web.config.QzHpProperties;
 import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.exception.BizException;
 import com.zhongjia.web.integration.wechat.WechatMessageClient;
@@ -45,6 +46,7 @@ public class QzHpInterfaceController {
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final WechatMessageClient wechatMessageClient;
+    private final QzHpProperties qzHpProperties;
     private final WechatPushProperties wechatPushProperties;
     private final WechatPushLogService wechatPushLogService;
     private final ObjectMapper objectMapper;
@@ -52,12 +54,14 @@ public class QzHpInterfaceController {
 
     public QzHpInterfaceController(
             WechatMessageClient wechatMessageClient,
+            QzHpProperties qzHpProperties,
             WechatPushProperties wechatPushProperties,
             WechatPushLogService wechatPushLogService,
             ObjectMapper objectMapper,
             DelayedPushTaskService delayedPushTaskService
     ) {
         this.wechatMessageClient = wechatMessageClient;
+        this.qzHpProperties = qzHpProperties;
         this.wechatPushProperties = wechatPushProperties;
         this.wechatPushLogService = wechatPushLogService;
         this.objectMapper = objectMapper;
@@ -80,7 +84,7 @@ public class QzHpInterfaceController {
                 ""
         );
         String jumpLink = pushAndLog(PushTaskConstants.TAG_LAB_APPOINTMENT, effectivePatientId, wechatRequest, request);
-        return Result.success(QzHpLinkVO.of(jumpLink));
+        return Result.success(QzHpLinkVO.of(maskLinkIfNeeded(jumpLink)));
     }
 
     @PostMapping("/report")
@@ -110,7 +114,7 @@ public class QzHpInterfaceController {
         // 处方宣教内容由医院侧拿到 jumpLink 后自行推送；我方保留主动推送代码口子但默认不触发。
         String jumpLink = pushAndLog(prescriptionTag, effectivePatientId, wechatRequest, request);
         delayedPushTaskService.createFollowUpTask(request);
-        return Result.success(QzHpLinkVO.of(jumpLink));
+        return Result.success(QzHpLinkVO.of(maskLinkIfNeeded(jumpLink)));
     }
 
     private String resolvePrescriptionTag(QzHpPrescriptionRequest request) {
@@ -218,6 +222,13 @@ public class QzHpInterfaceController {
 
     private String defaultString(String value) {
         return value == null ? "" : value;
+    }
+
+    private String maskLinkIfNeeded(String jumpLink) {
+        if (qzHpProperties.isMaskReturnLink()) {
+            return "";
+        }
+        return jumpLink;
     }
 
     private String resolveBizcode() {
