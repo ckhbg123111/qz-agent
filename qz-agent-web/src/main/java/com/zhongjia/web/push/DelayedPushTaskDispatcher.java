@@ -6,6 +6,7 @@ import com.zhongjia.biz.entity.WechatPushTask;
 import com.zhongjia.biz.service.WechatPushLogService;
 import com.zhongjia.biz.service.WechatPushTaskService;
 import com.zhongjia.web.config.PushTaskProperties;
+import com.zhongjia.web.config.QzHpProperties;
 import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.integration.wechat.WechatMessageClient;
 import com.zhongjia.web.integration.wechat.WechatPushClient;
@@ -36,6 +37,7 @@ public class DelayedPushTaskDispatcher {
     private final WechatPushLogService wechatPushLogService;
     private final WechatMessageClient wechatMessageClient;
     private final WechatPushClient wechatPushClient;
+    private final QzHpProperties qzHpProperties;
     private final WechatPushProperties wechatPushProperties;
     private final ObjectMapper objectMapper;
     private final DelayedPushTaskService delayedPushTaskService;
@@ -48,6 +50,7 @@ public class DelayedPushTaskDispatcher {
             WechatPushLogService wechatPushLogService,
             WechatMessageClient wechatMessageClient,
             WechatPushClient wechatPushClient,
+            QzHpProperties qzHpProperties,
             WechatPushProperties wechatPushProperties,
             ObjectMapper objectMapper,
             DelayedPushTaskService delayedPushTaskService,
@@ -59,6 +62,7 @@ public class DelayedPushTaskDispatcher {
         this.wechatPushLogService = wechatPushLogService;
         this.wechatMessageClient = wechatMessageClient;
         this.wechatPushClient = wechatPushClient;
+        this.qzHpProperties = qzHpProperties;
         this.wechatPushProperties = wechatPushProperties;
         this.objectMapper = objectMapper;
         this.delayedPushTaskService = delayedPushTaskService;
@@ -127,7 +131,7 @@ public class DelayedPushTaskDispatcher {
             WechatMessageResponseData data = response.getData();
             String messageXml = buildPushMessageXml(data);
             String bizcode = resolveBizcode();
-            wechatPushClient.pushMessage(bizcode, task.getPatientId(), messageXml);
+            pushSoapMessageIfEnabled(task, bizcode, messageXml);
 
             pushLog.setWechatApiCode(response.getCode());
             pushLog.setWechatApiMessage(response.getMessage());
@@ -212,6 +216,15 @@ public class DelayedPushTaskDispatcher {
             return "yytz";
         }
         return configuredBizcode;
+    }
+
+    private void pushSoapMessageIfEnabled(WechatPushTask task, String bizcode, String messageXml) {
+        if (qzHpProperties.isMaskReturnLink()) {
+            LOGGER.info("QZ_HP_MASK_RETURN_LINK=true，跳过定时任务SOAP真实调用: taskId={}, patientId={}, tag={}, bizcode={}",
+                    task.getId(), task.getPatientId(), task.getTag(), bizcode);
+            return;
+        }
+        wechatPushClient.pushMessage(bizcode, task.getPatientId(), messageXml);
     }
 
     private String buildPushMessageXml(WechatMessageResponseData data) {
