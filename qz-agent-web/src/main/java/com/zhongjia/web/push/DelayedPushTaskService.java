@@ -52,6 +52,16 @@ public class DelayedPushTaskService {
     }
 
     public Long createReportWarningTask(QzHpC13ReportRequest request) {
+        if (containsNegativeSuggestion(request.getSuggestion())) {
+            meterRegistry.counter("push.task.create.skipped", "taskType",
+                    PushTaskConstants.TASK_TYPE_REPORT_WARNING, "reason", "negative_suggestion").increment();
+            LOGGER.info("报告推送任务已跳过: taskType={}, patientId={}, reportNo={}, reason=negative_suggestion",
+                    PushTaskConstants.TASK_TYPE_REPORT_WARNING,
+                    resolvePatientIdForPush(request.getPatientId()),
+                    defaultString(request.getReportNo()));
+            return null;
+        }
+
         LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
         LocalDateTime baseTime = resolveBusinessTime(request.getTestDate(), now);
         LocalDateTime triggerTime = calculateReportTriggerTime(baseTime, now);
@@ -319,5 +329,9 @@ public class DelayedPushTaskService {
             return normalizedPrimary;
         }
         return defaultString(fallback).trim();
+    }
+
+    private boolean containsNegativeSuggestion(String suggestion) {
+        return defaultString(suggestion).trim().contains("阴性");
     }
 }
