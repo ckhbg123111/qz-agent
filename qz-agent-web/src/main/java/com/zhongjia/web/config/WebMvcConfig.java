@@ -28,8 +28,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/b2b/single-disease/patient/adt-a01-mz",
                         "/api/b2b/single-disease/check/orm-o01",
                         "/api/b2b/single-disease/check/reservation/siu-s12",
-                        "/api/b2b/single-disease/check/reservation/query",
-                        "/api/b2b/single-disease/check/reservation/siu-s15",
                         "/api/b2b/single-disease/check/status",
                         "/api/b2b/single-disease/check/report",
                         "/api/b2b/single-disease/lab/oml-o21",
