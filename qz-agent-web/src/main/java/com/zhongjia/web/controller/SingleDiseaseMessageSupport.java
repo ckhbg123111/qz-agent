@@ -8,7 +8,7 @@ import java.time.format.DateTimeFormatter;
 final class SingleDiseaseMessageSupport {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
-    private static final String DEFAULT_SENDER = "QZ_AGENT";
+    private static final String DEFAULT_SENDER = "ZJ_AGENT";
 
     private SingleDiseaseMessageSupport() {
     }
