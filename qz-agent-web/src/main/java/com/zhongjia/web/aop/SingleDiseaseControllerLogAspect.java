@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -12,6 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
@@ -19,35 +23,44 @@ import java.util.Objects;
 
 @Aspect
 @Component
-public class ControllerLogAspect {
+public class SingleDiseaseControllerLogAspect {
 
-    private static final Logger log = LoggerFactory.getLogger(ControllerLogAspect.class);
+    private static final Logger log = LoggerFactory.getLogger(SingleDiseaseControllerLogAspect.class);
     private final ObjectMapper objectMapper;
 
-    public ControllerLogAspect(ObjectMapper objectMapper) {
+    public SingleDiseaseControllerLogAspect(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
 
-    @Around("execution(* com.zhongjia.web.controller..*.*(..)) && " +
-            "!execution(* com.zhongjia.web.controller.SingleDisease*Controller.*(..))")
-    public Object printRequestAndResponseLog(ProceedingJoinPoint joinPoint) throws Throwable {
+    @Around("execution(* com.zhongjia.web.controller.SingleDisease*Controller.*(..))")
+    public Object printSingleDiseaseRequestAndResponseLog(ProceedingJoinPoint joinPoint) throws Throwable {
         long startTime = System.currentTimeMillis();
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         String method = signature.getDeclaringTypeName() + "." + signature.getName();
+        String path = currentRequestPath();
         String paramsJson = toJson(sanitizeArgs(joinPoint.getArgs()));
 
-        log.info("接口请求 method={}, params={}", method, paramsJson);
+        log.info("单病种接口请求 path={}, method={}, params={}", path, method, paramsJson);
 
         try {
             Object result = joinPoint.proceed();
             long cost = System.currentTimeMillis() - startTime;
-            log.info("接口响应 method={}, cost={}ms, result={}", method, cost, toJson(result));
+            log.info("单病种接口响应 path={}, method={}, cost={}ms, result={}", path, method, cost, toJson(result));
             return result;
         } catch (Throwable ex) {
             long cost = System.currentTimeMillis() - startTime;
-            log.error("接口异常 method={}, cost={}ms, params={}", method, cost, paramsJson, ex);
+            log.error("单病种接口异常 path={}, method={}, cost={}ms, params={}", path, method, cost, paramsJson, ex);
             throw ex;
         }
+    }
+
+    private String currentRequestPath() {
+        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
+        if (!(requestAttributes instanceof ServletRequestAttributes servletRequestAttributes)) {
+            return "UNKNOWN";
+        }
+        HttpServletRequest request = servletRequestAttributes.getRequest();
+        return request == null ? "UNKNOWN" : request.getRequestURI();
     }
 
     private Object[] sanitizeArgs(Object[] args) {
