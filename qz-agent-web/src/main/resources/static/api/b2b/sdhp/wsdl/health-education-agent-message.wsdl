@@ -4,7 +4,7 @@
              xmlns:tns="http://aiqikang.com/sdhp/ws"
              xmlns:xsd="http://www.w3.org/2001/XMLSchema"
              targetNamespace="http://aiqikang.com/sdhp/ws"
-             name="SingleDiseaseMessageService">
+             name="HealthEducationAgentMessageService">
 
     <types>
         <xsd:schema targetNamespace="http://aiqikang.com/sdhp/ws" elementFormDefault="qualified">
@@ -34,14 +34,14 @@
         <part name="parameters" element="tns:receiveMessageResponse"/>
     </message>
 
-    <portType name="SingleDiseaseMessagePortType">
+    <portType name="HealthEducationAgentMessagePortType">
         <operation name="receiveMessage">
             <input message="tns:ReceiveMessageRequest"/>
             <output message="tns:ReceiveMessageResponse"/>
         </operation>
     </portType>
 
-    <binding name="SingleDiseaseMessageSoapBinding" type="tns:SingleDiseaseMessagePortType">
+    <binding name="HealthEducationAgentMessageSoapBinding" type="tns:HealthEducationAgentMessagePortType">
         <soap:binding transport="http://schemas.xmlsoap.org/soap/http" style="document"/>
         <operation name="receiveMessage">
             <soap:operation soapAction="http://aiqikang.com/sdhp/ws/receiveMessage"/>
@@ -54,9 +54,9 @@
         </operation>
     </binding>
 
-    <service name="SingleDiseaseMessageService">
-        <port name="SingleDiseaseMessagePort" binding="tns:SingleDiseaseMessageSoapBinding">
-            <soap:address location="http://localhost:8080/api/b2b/sdhp/ws/single-disease-service"/>
+    <service name="HealthEducationAgentMessageService">
+        <port name="HealthEducationAgentMessagePort" binding="tns:HealthEducationAgentMessageSoapBinding">
+            <soap:address location="http://INTRANET_HOST:INTRANET_PORT/api/b2b/sdhp/ws/health-education-agent-service"/>
         </port>
     </service>
 </definitions>

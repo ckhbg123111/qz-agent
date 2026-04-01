@@ -27,7 +27,7 @@ import java.util.Set;
 @RestController
 public class SingleDiseaseSoapController {
 
-    static final String SERVICE_PATH = "/api/b2b/sdhp/ws/single-disease-service";
+    static final String SERVICE_PATH = "/api/b2b/sdhp/ws/health-education-agent-service";
     static final String NAMESPACE = "http://aiqikang.com/sdhp/ws";
     static final String METHOD_NAME = "receiveMessage";
 
