@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Tag(name = "单病种消息接口-患者管理")
-@RequestMapping("/api/b2b/single-disease/patient")
+@RequestMapping("/api/b2b/sdhp/patient")
 public class SingleDiseasePatientController {
 
     private static final String REQUEST_EVENT_TYPE = "ADT_A01_MZ";

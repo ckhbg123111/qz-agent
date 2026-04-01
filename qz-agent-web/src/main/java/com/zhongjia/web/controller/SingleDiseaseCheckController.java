@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @Tag(name = "单病种消息接口-检查")
-@RequestMapping("/api/b2b/single-disease/check")
+@RequestMapping("/api/b2b/sdhp/check")
 public class SingleDiseaseCheckController {
 
     @PostMapping(
