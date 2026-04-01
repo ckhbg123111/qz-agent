@@ -37,7 +37,7 @@ public class SingleDiseaseCheckController {
     public ResponseEntity<CommonXmlModels.ResponseEnvelope<CommonXmlModels.AckBody>> reservationPush(
             @RequestBody CommonXmlModels.RequestEnvelope<CheckMessageModels.CheckReservationPushBody> request
     ) {
-        return buildAckResponse(request, "SIU^S12^SIU_S12", "ACK_ SIU^S12^SIU_S12");
+        return buildAckResponse(request, "SIU^S12^SIU_S12", "ACK_SIU^S12^SIU_S12");
     }
 
     @PostMapping(
