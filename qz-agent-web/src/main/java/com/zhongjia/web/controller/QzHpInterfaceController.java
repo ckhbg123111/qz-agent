@@ -90,8 +90,27 @@ public class QzHpInterfaceController {
     @PostMapping("/report")
     @Operation(summary = "检验报告（推送）")
     public Result<QzHpLinkVO> report(@RequestBody @Valid QzHpC13ReportRequest request) {
+        boolean negativeReport = delayedPushTaskService.isNegativeReportSuggestion(request.getSuggestion());
+        if (negativeReport) {
+            return Result.success(QzHpLinkVO.of(""));
+        }
+
         delayedPushTaskService.createReportWarningTask(request);
-        return Result.success(QzHpLinkVO.of(""));
+        delayedPushTaskService.createFollowUpTask(request);
+        String effectivePatientId = delayedPushTaskService.resolvePatientIdForPush(request.getPatientId());
+        WechatMessageRequest wechatRequest = buildWechatRequest(
+                PushTaskConstants.TAG_REPORT_TIME_IN,
+                effectivePatientId,
+                request.getPatientName(),
+                request.getGender(),
+                request.getAge(),
+                "",
+                "",
+                request.getTestDate(),
+                ""
+        );
+        String jumpLink = pushAndLog(PushTaskConstants.TAG_REPORT_TIME_IN, effectivePatientId, wechatRequest, request);
+        return Result.success(QzHpLinkVO.of(jumpLink));
     }
 
     @PostMapping("/prescription")
@@ -111,10 +130,8 @@ public class QzHpInterfaceController {
                 request.getPrescriptionDate(),
                 ""
         );
-        // 处方宣教内容由医院侧拿到 jumpLink 后自行推送；我方保留主动推送代码口子但默认不触发。
-        String jumpLink = pushAndLog(prescriptionTag, effectivePatientId, wechatRequest, request);
-        delayedPushTaskService.createFollowUpTask(request);
-        return Result.success(QzHpLinkVO.of(maskLinkIfNeeded(jumpLink)));
+        pushAndLog(prescriptionTag, effectivePatientId, wechatRequest, request);
+        return Result.success(QzHpLinkVO.of(""));
     }
 
     private String resolvePrescriptionTag(QzHpPrescriptionRequest request) {
