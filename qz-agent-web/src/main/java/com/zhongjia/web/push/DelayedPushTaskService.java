@@ -7,7 +7,6 @@ import com.zhongjia.biz.service.WechatPushTaskService;
 import com.zhongjia.web.config.PushTaskProperties;
 import com.zhongjia.web.exception.BizException;
 import com.zhongjia.web.vo.qz.QzHpC13ReportRequest;
-import com.zhongjia.web.vo.qz.QzHpPrescriptionRequest;
 import com.zhongjia.web.vo.wechat.WechatMessageRequest;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDate;
@@ -16,9 +15,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
-import java.util.Objects;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DuplicateKeyException;
@@ -52,7 +48,7 @@ public class DelayedPushTaskService {
     }
 
     public Long createReportWarningTask(QzHpC13ReportRequest request) {
-        if (containsNegativeSuggestion(request.getSuggestion())) {
+        if (isNegativeReportSuggestion(request.getSuggestion())) {
             meterRegistry.counter("push.task.create.skipped", "taskType",
                     PushTaskConstants.TASK_TYPE_REPORT_WARNING, "reason", "negative_suggestion").increment();
             LOGGER.info("报告推送任务已跳过: taskType={}, patientId={}, reportNo={}, reason=negative_suggestion",
@@ -89,9 +85,9 @@ public class DelayedPushTaskService {
         );
     }
 
-    public Long createFollowUpTask(QzHpPrescriptionRequest request) {
+    public Long createFollowUpTask(QzHpC13ReportRequest request) {
         LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
-        LocalDateTime baseTime = resolveBusinessTime(request.getPrescriptionDate(), now);
+        LocalDateTime baseTime = resolveBusinessTime(request.getTestDate(), now);
         LocalDateTime triggerTime = calculateFollowUpTriggerTime(baseTime, now);
         String effectivePatientId = resolvePatientIdForPush(request.getPatientId());
         WechatMessageRequest wechatRequest = buildWechatRequest(
@@ -100,12 +96,12 @@ public class DelayedPushTaskService {
                 request.getPatientName(),
                 request.getGender(),
                 request.getAge(),
-                defaultString(request.getDiagnosis()),
-                resolvePrescriptionContent(request),
+                "",
+                "",
                 toIsoOffset(baseTime),
                 ""
         );
-        String sourceNo = defaultString(request.getVisitNo());
+        String sourceNo = firstNonBlank(request.getReportNo(), request.getVisitNo());
         return createTask(
                 PushTaskConstants.TASK_TYPE_FOLLOW_UP_REMINDER,
                 effectivePatientId,
@@ -200,6 +196,10 @@ public class DelayedPushTaskService {
         return task.getId();
     }
 
+    public boolean isNegativeReportSuggestion(String suggestion) {
+        return containsNegativeSuggestion(suggestion);
+    }
+
     private String buildIdempotentKey(String taskType, String patientId, String sourceNo, LocalDateTime triggerTime) {
         return taskType + "|" + patientId + "|" + defaultString(sourceNo) + "|" + triggerTime;
     }
@@ -266,25 +266,6 @@ public class DelayedPushTaskService {
             // ignored
         }
         throw new BizException(400, "业务时间格式错误");
-    }
-
-    private String resolvePrescriptionContent(QzHpPrescriptionRequest request) {
-        String medicines = joinMedicines(request.getMedicines());
-        if (!medicines.isBlank()) {
-            return medicines;
-        }
-        return defaultString(request.getTherapy());
-    }
-
-    private String joinMedicines(List<String> medicines) {
-        if (medicines == null || medicines.isEmpty()) {
-            return "";
-        }
-        return medicines.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(item -> !item.isBlank())
-                .collect(Collectors.joining("；"));
     }
 
     private WechatMessageRequest buildWechatRequest(
