@@ -54,3 +54,6 @@ logs/
 ### OS / tooling ###
 .idea/
 out/
+
+### Local docker image exports ###
+docker-images/
