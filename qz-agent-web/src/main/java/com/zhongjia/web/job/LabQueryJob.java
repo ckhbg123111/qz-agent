@@ -10,6 +10,7 @@ import com.zhongjia.web.integration.lab.LabQueryRequest;
 import com.zhongjia.web.integration.lab.LabQueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -33,6 +34,7 @@ public class LabQueryJob {
     private final LabQueryRecordService labQueryRecordService;
     private final Clock clock;
 
+    @Autowired
     public LabQueryJob(
             LabQueryProperties properties,
             LabQueryClient labQueryClient,
