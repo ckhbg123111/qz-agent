@@ -12,9 +12,11 @@ import com.zhongjia.web.push.DelayedPushTaskService;
 import com.zhongjia.web.push.PushTaskConstants;
 import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.qz.QzHpC13ReportRequest;
+import com.zhongjia.web.vo.qz.QzHpDiagnosisEventRequest;
 import com.zhongjia.web.vo.qz.QzHpLabAppointmentRequest;
 import com.zhongjia.web.vo.qz.QzHpLinkVO;
 import com.zhongjia.web.vo.qz.QzHpPrescriptionRequest;
+import com.zhongjia.web.vo.qz.QzHpRegistrationEventRequest;
 import com.zhongjia.web.vo.wechat.WechatMessageRequest;
 import com.zhongjia.web.vo.wechat.WechatMessageResponse;
 import com.zhongjia.web.vo.wechat.WechatMessageResponseData;
@@ -132,6 +134,39 @@ public class QzHpInterfaceController {
         );
         pushAndLog(prescriptionTag, effectivePatientId, wechatRequest, request);
         return Result.success(QzHpLinkVO.of(""));
+    }
+
+    @PostMapping("/diagnosis-event")
+    @Operation(summary = "病历确诊事件")
+    public Result<Boolean> diagnosisEvent(@RequestBody @Valid QzHpDiagnosisEventRequest request) {
+        LOGGER.info(
+                "病历确诊事件入参: patientId={}, patientName={}, gender={}, age={}, department={}, diagnosis={}, remark={}, date={}, doctor={}, diseaseType={}",
+                request.getPatientId(),
+                request.getPatientName(),
+                request.getGender(),
+                request.getAge(),
+                request.getDepartment(),
+                request.getDiagnosis(),
+                request.getRemark(),
+                request.getDate(),
+                request.getDoctor(),
+                request.getDiseaseType()
+        );
+        return Result.success(Boolean.TRUE);
+    }
+
+    @PostMapping("/registration-event")
+    @Operation(summary = "挂号事件")
+    public Result<Boolean> registrationEvent(@RequestBody @Valid QzHpRegistrationEventRequest request) {
+        LOGGER.info(
+                "挂号事件入参: patientId={}, patientName={}, gender={}, age={}, department={}",
+                request.getPatientId(),
+                request.getPatientName(),
+                request.getGender(),
+                request.getAge(),
+                request.getDepartment()
+        );
+        return Result.success(Boolean.TRUE);
     }
 
     private String resolvePrescriptionTag(QzHpPrescriptionRequest request) {
