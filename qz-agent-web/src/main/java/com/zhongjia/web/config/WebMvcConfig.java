@@ -1,36 +1,8 @@
 package com.zhongjia.web.config;
 
-import com.zhongjia.web.security.JwtAuthInterceptor;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
-
-    private final JwtAuthInterceptor jwtAuthInterceptor;
-
-    public WebMvcConfig(JwtAuthInterceptor jwtAuthInterceptor) {
-        this.jwtAuthInterceptor = jwtAuthInterceptor;
-    }
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(jwtAuthInterceptor)
-                .addPathPatterns("/api/**")
-                .excludePathPatterns(
-                        "/api/hello",
-                        "/api/auth/login",
-                        "/api/test/**",
-                        "/api/b2b/qz/hp/lab-appointment",
-                        "/api/b2b/qz/hp/report",
-                        "/api/b2b/qz/hp/prescription",
-                        "/api/b2b/sdhp/ws/health-education-agent-service",
-                        "/api/b2b/sdhp/wsdl/health-education-agent-message.wsdl",
-                        "/v3/api-docs/**",
-                        "/swagger-ui/**",
-                        "/swagger-ui.html",
-                        "/actuator/**"
-                );
-    }
 }
