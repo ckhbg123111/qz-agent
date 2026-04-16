@@ -2,6 +2,7 @@
 
 ## 1. 基本信息
 
+- 服务ip：`http://192.168.1.177`
 - 服务前缀：`/api/b2b/qz/hp`
 - 请求方式：`POST`
 - 数据格式：`application/json`
@@ -9,6 +10,8 @@
 - 返回格式：统一 `Result<Boolean>`
 - 当前业务行为：两个接口当前均返回成功（`data = true`）
 - 日志说明：服务端会记录请求中的全部参数用于对接排查
+
+[在线接口文档](https://s.apifox.cn/d66b6e43-b22f-42a2-b9e4-fc0e5de899ec?pwd=DqKH7gPD)
 
 ---
 
@@ -48,18 +51,18 @@
 
 ### 3.1 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| patientId | String | 是 | 患者ID |
-| patientName | String | 否 | 患者名称 |
-| gender | String | 否 | 患者性别（男/女/未知） |
-| age | Integer | 否 | 患者年龄 |
-| department | String | 否 | 科室 |
-| diagnosis | String | 否 | 诊断 |
-| remark | String | 否 | 备注 |
+| 字段名 | 类型 | 必填 | 说明                             |
+|---|---|---|--------------------------------|
+| patientId | String | 是 | 患者ID                           |
+| patientName | String | 否 | 患者名称                           |
+| gender | String | 否 | 患者性别（男/女/未知）                   |
+| age | Integer | 否 | 患者年龄                           |
+| department | String | 否 | 科室                             |
+| diagnosis | String | 否 | 诊断                             |
+| remark | String | 否 | 备注                             |
 | date | String | 否 | 日期（建议 `yyyy-MM-dd` 或 ISO-8601） |
-| doctor | String | 否 | 医生 |
-| diseaseType | String(Enum) | 是 | 病种枚举（见下方） |
+| doctor | String | 否 | 医生                             |
+| diseaseType | String(Enum) | 是 | 病种枚举（见下文 3.2）                  |
 
 ### 3.2 病种枚举说明（含中文备注）
 
@@ -106,13 +109,13 @@
 
 ### 4.1 请求参数
 
-| 字段名 | 类型 | 必填 | 说明 |
-|---|---|---|---|
-| patientId | String | 是 | 患者ID |
-| patientName | String | 否 | 患者名称 |
-| gender | String | 否 | 患者性别（男/女/未知） |
-| age | Integer | 否 | 患者年龄 |
-| department | String | 是 | 科室 |
+| 字段名 | 类型 | 必填 | 说明                    |
+|---|---|---|-----------------------|
+| patientId | String | 是 | 患者ID                  |
+| patientName | String | 否 | 患者名称                  |
+| gender | String | 否 | 患者性别（男/女/未知）          |
+| age | Integer | 否 | 患者年龄                  |
+| department | String | 是 | 科室（暂定String类型，视情况可修改） |
 
 ### 4.2 请求示例
 
