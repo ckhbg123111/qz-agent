@@ -1,4 +1,4 @@
-# QzHp 事件接口对接文档（医院）
+# 消化内科科普宣教接口文档2.0
 
 ## 1. 基本信息
 
@@ -66,11 +66,11 @@
 
 ### 3.2 病种枚举说明（含中文备注）
 
-| 枚举值 | 中文备注 |
-|---|---|
-| GASTRITIS | 胃炎 |
-| PEPTIC_ULCER | 消化性溃疡 |
-| INFLAMMATORY_BOWEL_DISEASE | 炎症性肠病 |
+| 枚举值 | 中文备注 | 对接备注                |
+|---|---|---------------------|
+| GASTRITIS | 胃炎 | 出现胃炎关键词、确诊胃炎相关疾病    |
+| PEPTIC_ULCER | 消化性溃疡 | 消化性溃疡 十二指肠溃疡 胃溃疡关键词 |
+| INFLAMMATORY_BOWEL_DISEASE | 炎症性肠病 | 溃疡性结肠炎 克罗恩病 炎症性肠病   |
 
 ### 3.3 请求示例
 
@@ -101,43 +101,21 @@
 
 ---
 
-## 4. 挂号事件接口
+## ~~4. 挂号事件接口~~
 
-- 接口名称：挂号事件
-- URL：`/api/b2b/qz/hp/registration-event`
-- Method：`POST`
+- ~~接口名称：挂号事件~~
+- ~~URL：`/api/b2b/qz/hp/registration-event`~~
+- ~~Method：`POST`~~
 
-### 4.1 请求参数
+### ~~4.1 请求参数~~
 
-| 字段名 | 类型 | 必填 | 说明                    |
+| ~~字段名~~ | ~~类型~~ | ~~必填~~ | ~~说明~~                    |
 |---|---|---|-----------------------|
-| patientId | String | 是 | 患者ID                  |
-| patientName | String | 否 | 患者名称                  |
-| gender | String | 否 | 患者性别（男/女/未知）          |
-| age | Integer | 否 | 患者年龄                  |
-| department | String | 是 | 科室（暂定String类型，视情况可修改） |
-
-### 4.2 请求示例
-
-```json
-{
-  "patientId": "P202604160002",
-  "patientName": "李四",
-  "gender": "女",
-  "age": 29,
-  "department": "消化内科"
-}
-```
-
-### 4.3 成功响应示例
-
-```json
-{
-  "code": 200,
-  "message": "success",
-  "data": true
-}
-```
+| ~~patientId~~ | ~~String~~ | ~~是~~ | ~~患者ID~~                  |
+| ~~patientName~~ | ~~String~~ | ~~否~~ | ~~患者名称~~                  |
+| ~~gender~~ | ~~String~~ | ~~否~~ | ~~患者性别（男/女/未知）~~          |
+| ~~age~~ | ~~Integer~~ | ~~否~~ | ~~患者年龄~~                  |
+| ~~department~~ | ~~String~~ | ~~是~~ | ~~科室（暂定String类型，视情况可修改）~~ |
 
 ---
 
