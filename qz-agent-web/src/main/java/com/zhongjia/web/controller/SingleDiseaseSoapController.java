@@ -10,8 +10,11 @@ import jakarta.xml.soap.SOAPElement;
 import jakarta.xml.soap.SOAPEnvelope;
 import jakarta.xml.soap.SOAPFault;
 import jakarta.xml.soap.SOAPMessage;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.xml.namespace.QName;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Set;
@@ -30,6 +34,7 @@ public class SingleDiseaseSoapController {
     static final String SERVICE_PATH = "/api/b2b/sdhp/ws/health-education-agent-service";
     static final String NAMESPACE = "http://aiqikang.com/sdhp/ws";
     static final String METHOD_NAME = "receiveMessage";
+    static final String WSDL_CLASSPATH = "static/api/b2b/sdhp/wsdl/health-education-agent-message.wsdl";
 
     private static final String PREFIX = "sdhp";
     private static final Set<String> MESSAGE_PARAM_NAMES = Set.of("messageXml", "message", "arg0");
@@ -65,6 +70,21 @@ public class SingleDiseaseSoapController {
             return ResponseEntity.internalServerError()
                     .contentType(SOAP_MEDIA_TYPE)
                     .body(buildSoapFault("Server", "SOAP消息处理失败"));
+        }
+    }
+
+    @GetMapping(value = SERVICE_PATH, params = "WSDL=1", produces = MediaType.TEXT_XML_VALUE)
+    public ResponseEntity<String> getWsdlByServicePath() {
+        try {
+            ClassPathResource wsdlResource = new ClassPathResource(WSDL_CLASSPATH);
+            String wsdlContent = StreamUtils.copyToString(wsdlResource.getInputStream(), StandardCharsets.UTF_8);
+            return ResponseEntity.ok()
+                    .contentType(SOAP_MEDIA_TYPE)
+                    .body(wsdlContent);
+        } catch (IOException ex) {
+            return ResponseEntity.internalServerError()
+                    .contentType(SOAP_MEDIA_TYPE)
+                    .body(buildSoapFault("Server", "WSDL读取失败"));
         }
     }
 
