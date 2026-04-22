@@ -1,9 +1,12 @@
 package com.zhongjia.web.vo.qz;
 
+import com.fasterxml.jackson.annotation.JsonSetter;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import lombok.Data;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Data
@@ -58,4 +61,93 @@ public class QzHpPrescriptionRequest {
 
     @Schema(description = "审核药师")
     private String pharmacist;
+
+    public void setMedicineItem(List<QzHpMedicineItem> medicineItem) {
+        this.medicineItem = medicineItem;
+    }
+
+    @JsonSetter("medicines")
+    public void setMedicines(JsonNode medicinesNode) {
+        if (medicinesNode == null || medicinesNode.isNull()) {
+            this.medicines = null;
+            return;
+        }
+        if (containsMedicineObject(medicinesNode)) {
+            this.medicineItem = parseMedicineItems(medicinesNode);
+            this.medicines = null;
+            return;
+        }
+        this.medicines = parseMedicineNames(medicinesNode);
+    }
+
+    private boolean containsMedicineObject(JsonNode medicinesNode) {
+        if (medicinesNode.isObject()) {
+            return true;
+        }
+        if (!medicinesNode.isArray()) {
+            return false;
+        }
+        for (JsonNode itemNode : medicinesNode) {
+            if (itemNode != null && itemNode.isObject()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private List<QzHpMedicineItem> parseMedicineItems(JsonNode medicinesNode) {
+        List<QzHpMedicineItem> result = new ArrayList<>();
+        if (medicinesNode.isObject()) {
+            addMedicineItem(result, medicinesNode);
+            return result;
+        }
+        if (!medicinesNode.isArray()) {
+            return result;
+        }
+        for (JsonNode itemNode : medicinesNode) {
+            addMedicineItem(result, itemNode);
+        }
+        return result;
+    }
+
+    private void addMedicineItem(List<QzHpMedicineItem> result, JsonNode itemNode) {
+        if (itemNode == null || !itemNode.isObject()) {
+            return;
+        }
+        QzHpMedicineItem item = new QzHpMedicineItem();
+        item.setMedicineCode(readText(itemNode, "medicineCode"));
+        item.setMedicineName(readText(itemNode, "medicineName"));
+        item.setMedicineCodeSystem(readText(itemNode, "medicineCodeSystem"));
+        item.setSpecification(readText(itemNode, "specification"));
+        item.setDosage(readText(itemNode, "dosage"));
+        item.setDosageUnit(readText(itemNode, "dosageUnit"));
+        item.setFrequency(readText(itemNode, "frequency"));
+        item.setRoute(readText(itemNode, "route"));
+        result.add(item);
+    }
+
+    private List<String> parseMedicineNames(JsonNode medicinesNode) {
+        List<String> result = new ArrayList<>();
+        if (medicinesNode.isTextual()) {
+            result.add(medicinesNode.asText());
+            return result;
+        }
+        if (!medicinesNode.isArray()) {
+            return result;
+        }
+        for (JsonNode itemNode : medicinesNode) {
+            if (itemNode != null && !itemNode.isNull()) {
+                result.add(itemNode.asText());
+            }
+        }
+        return result;
+    }
+
+    private String readText(JsonNode itemNode, String fieldName) {
+        JsonNode fieldNode = itemNode.get(fieldName);
+        if (fieldNode == null || fieldNode.isNull()) {
+            return null;
+        }
+        return fieldNode.asText();
+    }
 }

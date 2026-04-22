@@ -219,20 +219,35 @@ public class QzHpInterfaceController {
     }
 
     private String resolvePrescriptionContent(QzHpPrescriptionRequest request) {
-        String medicines = joinMedicines(request.getMedicines());
-        if (!medicines.isBlank()) {
-            return medicines;
+        String medicineItems = joinMedicineItems(request.getMedicineItem());
+        if (!medicineItems.isBlank()) {
+            return medicineItems;
+        }
+        String medicineNames = joinMedicineNames(request.getMedicines());
+        if (!medicineNames.isBlank()) {
+            return medicineNames;
         }
         return defaultString(request.getTherapy());
     }
 
-    private String joinMedicines(List<QzHpMedicineItem> medicines) {
+    private String joinMedicineItems(List<QzHpMedicineItem> medicines) {
         if (medicines == null || medicines.isEmpty()) {
             return "";
         }
         return medicines.stream()
                 .filter(Objects::nonNull)
                 .map(QzHpMedicineItem::getMedicineName)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(item -> !item.isBlank())
+                .collect(Collectors.joining("；"));
+    }
+
+    private String joinMedicineNames(List<String> medicines) {
+        if (medicines == null || medicines.isEmpty()) {
+            return "";
+        }
+        return medicines.stream()
                 .filter(Objects::nonNull)
                 .map(String::trim)
                 .filter(item -> !item.isBlank())
