@@ -22,7 +22,8 @@ public class QzHpDiagnosisEventRequest {
     @Schema(description = "患者年龄")
     private Integer age;
 
-    @Schema(description = "科室")
+    @NotNull(message = "科室枚举不能为空")
+    @Schema(description = "科室（GASTROENTEROLOGY/ENDOCRINOLOGY）")
     private String department;
 
     @Schema(description = "诊断")
@@ -38,6 +39,6 @@ public class QzHpDiagnosisEventRequest {
     private String doctor;
 
     @NotNull(message = "病种枚举不能为空")
-    @Schema(description = "病种枚举（GASTRITIS/PEPTIC_ULCER/INFLAMMATORY_BOWEL_DISEASE）")
+    @Schema(description = "病种枚举（GASTRITIS/PEPTIC_ULCER/INFLAMMATORY_BOWEL_DISEASE/DIABETES_MELLITUS）")
     private QzHpDiseaseTypeEnum diseaseType;
 }

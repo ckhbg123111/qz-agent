@@ -22,13 +22,13 @@ public class QzHpLabAppointmentRequest {
     @Schema(description = "就诊号/病案号")
     private String visitNo;
 
-    @Schema(description = "申请科室")
+    @Schema(description = "申请科室: 消化内科门诊/内分泌科门诊")
     private String applyDepartment;
 
     @Schema(description = "执行科室")
     private String executeDepartment;
 
-    @Schema(description = "检验项目")
+    @Schema(description = "检验项目：其他呼气试验/糖化血红蛋白")
     private String labItem;
 
     @Schema(description = "主诉")

@@ -1,11 +1,12 @@
 package com.zhongjia.web.vo.qz;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.util.List;
 
 @Data
-@Schema(name = "QzHpPrescriptionRequest", description = "幽门螺杆菌处方推送请求")
+@Schema(name = "QzHpPrescriptionRequest", description = "处方推送请求")
 public class QzHpPrescriptionRequest {
 
     @Schema(description = "患者ID")
@@ -23,7 +24,7 @@ public class QzHpPrescriptionRequest {
     @Schema(description = "就诊号/病案号")
     private String visitNo;
 
-    @Schema(description = "诊断")
+    @Schema(description = "诊断：包含幽门螺旋杆菌、幽门螺杆菌、糖尿病")
     private String diagnosis;
 
     @Schema(description = "处方日期（ISO-8601 或 yyyy-MM-dd）")
