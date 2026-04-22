@@ -94,37 +94,7 @@ public class QzHpInterfaceController {
     @PostMapping("/lab-order-event")
     @Operation(summary = "检验开单事件")
     public Result<Boolean> labOrderEvent(@RequestBody @Valid QzHpLabOrderEventRequest request) {
-        LOGGER.info(
-                "检验开单事件入参: eventId={}, traceId={}, eventTime={}, sourceSystem={}, patientId={}, patientName={}, visitId={}, visitNo={}, encounterType={}, departmentCode={}, departmentName={}, labApplyNo={}, orderNo={}, orderTime={}, applyDoctorId={}, applyDoctorName={}, executeDepartmentCode={}, executeDepartmentName={}, priority={}, diagnosisCode={}, diagnosisCodeSystem={}, diagnosis={}, specimenTypeCode={}, specimenTypeName={}, specimenCollectionSite={}, clinicalPurpose={}, labItems={}, remark={}",
-                request.getEventId(),
-                request.getTraceId(),
-                request.getEventTime(),
-                request.getSourceSystem(),
-                request.getPatientId(),
-                request.getPatientName(),
-                request.getVisitId(),
-                request.getVisitNo(),
-                request.getEncounterType(),
-                request.getDepartmentCode(),
-                request.getDepartmentName(),
-                request.getLabApplyNo(),
-                request.getOrderNo(),
-                request.getOrderTime(),
-                request.getApplyDoctorId(),
-                request.getApplyDoctorName(),
-                request.getExecuteDepartmentCode(),
-                request.getExecuteDepartmentName(),
-                request.getPriority(),
-                request.getDiagnosisCode(),
-                request.getDiagnosisCodeSystem(),
-                request.getDiagnosis(),
-                request.getSpecimenTypeCode(),
-                request.getSpecimenTypeName(),
-                request.getSpecimenCollectionSite(),
-                request.getClinicalPurpose(),
-                request.getLabItems(),
-                request.getRemark()
-        );
+        LOGGER.info("检验开单事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
     }
 
@@ -178,35 +148,14 @@ public class QzHpInterfaceController {
     @PostMapping("/diagnosis-event")
     @Operation(summary = "病历确诊事件")
     public Result<Boolean> diagnosisEvent(@RequestBody @Valid QzHpDiagnosisEventRequest request) {
-        LOGGER.info(
-                "病历确诊事件入参: patientId={}, patientName={}, gender={}, age={}, department={}, diagnosisCode={}, diagnosisCodeSystem={}, diagnosis={}, remark={}, date={}, doctor={}, diseaseType={}",
-                request.getPatientId(),
-                request.getPatientName(),
-                request.getGender(),
-                request.getAge(),
-                request.getDepartment(),
-                request.getDiagnosisCode(),
-                request.getDiagnosisCodeSystem(),
-                request.getDiagnosis(),
-                request.getRemark(),
-                request.getDate(),
-                request.getDoctor(),
-                request.getDiseaseType()
-        );
+        LOGGER.info("病历确诊事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
     }
 
     @PostMapping("/registration-event")
     @Operation(summary = "挂号事件")
     public Result<Boolean> registrationEvent(@RequestBody @Valid QzHpRegistrationEventRequest request) {
-        LOGGER.info(
-                "挂号事件入参: patientId={}, patientName={}, gender={}, age={}, department={}",
-                request.getPatientId(),
-                request.getPatientName(),
-                request.getGender(),
-                request.getAge(),
-                request.getDepartment()
-        );
+        LOGGER.info("挂号事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
     }
 

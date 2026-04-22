@@ -1,5 +1,7 @@
 package com.zhongjia.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.qz.QzSurgeryAdmissionRequest;
 import com.zhongjia.web.vo.qz.QzSurgeryCompletionRequest;
@@ -21,32 +23,49 @@ import org.springframework.web.bind.annotation.RestController;
 public class QzSurgeryInterfaceController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QzSurgeryInterfaceController.class);
+    private final ObjectMapper objectMapper;
+
+    public QzSurgeryInterfaceController(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @PostMapping("/admission")
     @Operation(summary = "办理入院")
     public Result<Boolean> admission(@RequestBody @Valid QzSurgeryAdmissionRequest request) {
-        LOGGER.info("办理入院事件入参: {}", request);
+        LOGGER.info("办理入院事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
     }
 
     @PostMapping("/confirmation")
     @Operation(summary = "手术确认")
     public Result<Boolean> confirmation(@RequestBody @Valid QzSurgeryConfirmationRequest request) {
-        LOGGER.info("手术确认事件入参: {}", request);
+        LOGGER.info("手术确认事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
     }
 
     @PostMapping("/completion")
     @Operation(summary = "手术完成单")
     public Result<Boolean> completion(@RequestBody @Valid QzSurgeryCompletionRequest request) {
-        LOGGER.info("手术完成单事件入参: {}", request);
+        LOGGER.info("手术完成单事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
     }
 
     @PostMapping("/discharge")
     @Operation(summary = "办理出院")
     public Result<Boolean> discharge(@RequestBody @Valid QzSurgeryDischargeRequest request) {
-        LOGGER.info("办理出院事件入参: {}", request);
+        LOGGER.info("办理出院事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
+    }
+
+    private String toRequestJson(Object request) {
+        if (request == null) {
+            return "{}";
+        }
+        try {
+            return objectMapper.writeValueAsString(request);
+        } catch (JsonProcessingException ex) {
+            LOGGER.warn("请求体序列化失败，使用降级内容记录日志", ex);
+            return "{\"serializeError\":\"REQUEST_JSON_SERIALIZE_FAILED\"}";
+        }
     }
 }
