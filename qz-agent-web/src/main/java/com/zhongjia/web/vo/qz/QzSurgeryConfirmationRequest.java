@@ -34,7 +34,6 @@ public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "是否日间手术")
     private Boolean daySurgeryFlag;
 
-    @NotBlank(message = "手术级别不能为空")
     @Schema(description = "手术级别")
     private String operationLevel;
 
@@ -52,7 +51,6 @@ public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
     private List<QzOperationItem> plannedOperationList;
 
     @Valid
-    @NotEmpty(message = "确认手术列表不能为空")
     @Schema(description = "确认手术列表")
     private List<QzOperationItem> confirmedOperationList;
 
@@ -63,11 +61,9 @@ public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "计划结束时间")
     private String plannedEndTime;
 
-    @NotBlank(message = "手术室编码不能为空")
     @Schema(description = "手术室编码")
     private String operatingRoomCode;
 
-    @NotBlank(message = "手术室名称不能为空")
     @Schema(description = "手术室名称")
     private String operatingRoomName;
 

@@ -18,7 +18,6 @@ public class QzSurgeryAdmissionRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "入院时间")
     private String admissionTime;
 
-    @NotBlank(message = "入院科室编码不能为空")
     @Schema(description = "入院科室编码")
     private String admissionDepartmentCode;
 
@@ -35,7 +34,6 @@ public class QzSurgeryAdmissionRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "床号")
     private String bedNo;
 
-    @NotBlank(message = "入院类型不能为空")
     @Schema(description = "入院类型，如 NORMAL、EMERGENCY、TRANSFER_IN")
     private String admissionType;
 

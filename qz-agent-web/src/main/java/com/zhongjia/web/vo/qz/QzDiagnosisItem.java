@@ -8,7 +8,6 @@ import lombok.Data;
 @Schema(name = "QzDiagnosisItem", description = "诊断条目")
 public class QzDiagnosisItem {
 
-    @NotBlank(message = "诊断类型不能为空")
     @Schema(description = "诊断类型，如 PRIMARY、POSTOPERATIVE_PRIMARY")
     private String diagnosisType;
 
