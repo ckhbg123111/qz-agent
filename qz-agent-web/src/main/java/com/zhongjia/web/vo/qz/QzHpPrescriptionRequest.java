@@ -42,7 +42,10 @@ public class QzHpPrescriptionRequest {
 
     @Valid
     @Schema(description = "药品信息列表，优先按药品编码识别；糖尿病场景示例可传胰岛素、利拉鲁肽、司美格鲁肽、替尔泊肽对应院内药品字典编码")
-    private List<QzHpMedicineItem> medicines;
+    private List<QzHpMedicineItem> medicineItem;
+
+    @Schema(description = "药品信息列表")
+    private List<String> medicines;
 
     @Schema(description = "医院")
     private String hospital;
