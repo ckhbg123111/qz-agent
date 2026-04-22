@@ -50,6 +50,10 @@ public class QzSurgeryDischargeRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "出院诊断列表")
     private List<QzDiagnosisItem> dischargeDiagnosisList;
 
+    @Valid
+    @Schema(description = "本次住院完成手术列表，优先传 ICD-9-CM3 或院内手术编码；示例：肾穿刺活检 55.2300，屈光手术可传院内编码 EYE_REFRACT_001")
+    private List<QzOperationItem> performedOperationList;
+
     @Schema(description = "出院经治医生工号")
     private String dischargeDoctorId;
 

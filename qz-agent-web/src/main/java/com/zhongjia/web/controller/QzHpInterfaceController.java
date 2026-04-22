@@ -14,6 +14,7 @@ import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.qz.QzHpC13ReportRequest;
 import com.zhongjia.web.vo.qz.QzHpDiagnosisEventRequest;
 import com.zhongjia.web.vo.qz.QzHpLabAppointmentRequest;
+import com.zhongjia.web.vo.qz.QzHpMedicineItem;
 import com.zhongjia.web.vo.qz.QzHpLinkVO;
 import com.zhongjia.web.vo.qz.QzHpPrescriptionRequest;
 import com.zhongjia.web.vo.qz.QzHpRegistrationEventRequest;
@@ -140,12 +141,14 @@ public class QzHpInterfaceController {
     @Operation(summary = "病历确诊事件")
     public Result<Boolean> diagnosisEvent(@RequestBody @Valid QzHpDiagnosisEventRequest request) {
         LOGGER.info(
-                "病历确诊事件入参: patientId={}, patientName={}, gender={}, age={}, department={}, diagnosis={}, remark={}, date={}, doctor={}, diseaseType={}",
+                "病历确诊事件入参: patientId={}, patientName={}, gender={}, age={}, department={}, diagnosisCode={}, diagnosisCodeSystem={}, diagnosis={}, remark={}, date={}, doctor={}, diseaseType={}",
                 request.getPatientId(),
                 request.getPatientName(),
                 request.getGender(),
                 request.getAge(),
                 request.getDepartment(),
+                request.getDiagnosisCode(),
+                request.getDiagnosisCodeSystem(),
                 request.getDiagnosis(),
                 request.getRemark(),
                 request.getDate(),
@@ -185,11 +188,13 @@ public class QzHpInterfaceController {
         return defaultString(request.getTherapy());
     }
 
-    private String joinMedicines(List<String> medicines) {
+    private String joinMedicines(List<QzHpMedicineItem> medicines) {
         if (medicines == null || medicines.isEmpty()) {
             return "";
         }
         return medicines.stream()
+                .filter(Objects::nonNull)
+                .map(QzHpMedicineItem::getMedicineName)
                 .filter(Objects::nonNull)
                 .map(String::trim)
                 .filter(item -> !item.isBlank())

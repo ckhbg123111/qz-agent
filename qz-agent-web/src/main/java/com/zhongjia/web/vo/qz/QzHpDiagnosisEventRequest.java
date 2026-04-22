@@ -26,7 +26,13 @@ public class QzHpDiagnosisEventRequest {
     @Schema(description = "科室（GASTROENTEROLOGY/ENDOCRINOLOGY）")
     private String department;
 
-    @Schema(description = "诊断")
+    @Schema(description = "主诊断编码，优先传 ICD-10；示例：胃炎 K29.50、消化性溃疡 K27.90、十二指肠溃疡 K26.90、胃溃疡 K25.90、溃疡性结肠炎 K51.90、克罗恩病 K50.90、糖尿病 E14.90")
+    private String diagnosisCode;
+
+    @Schema(description = "诊断编码体系，默认 ICD-10")
+    private String diagnosisCodeSystem;
+
+    @Schema(description = "主诊断名称")
     private String diagnosis;
 
     @Schema(description = "备注")

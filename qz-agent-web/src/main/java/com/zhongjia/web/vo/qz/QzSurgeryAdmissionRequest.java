@@ -60,6 +60,10 @@ public class QzSurgeryAdmissionRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "入院诊断列表")
     private List<QzDiagnosisItem> admissionDiagnosisList;
 
+    @Valid
+    @Schema(description = "拟手术列表，优先传 ICD-9-CM3 或院内手术编码；示例：肾穿刺活检 55.2300，屈光手术可传院内编码 EYE_REFRACT_001")
+    private List<QzOperationItem> plannedOperationList;
+
     @Schema(description = "是否拟行手术")
     private Boolean plannedOperationFlag;
 

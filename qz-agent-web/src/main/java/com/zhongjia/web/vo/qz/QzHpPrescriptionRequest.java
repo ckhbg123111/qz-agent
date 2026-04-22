@@ -1,8 +1,9 @@
 package com.zhongjia.web.vo.qz;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.Valid;
 import lombok.Data;
+
 import java.util.List;
 
 @Data
@@ -24,7 +25,13 @@ public class QzHpPrescriptionRequest {
     @Schema(description = "就诊号/病案号")
     private String visitNo;
 
-    @Schema(description = "诊断：包含幽门螺旋杆菌、幽门螺杆菌、糖尿病")
+    @Schema(description = "主诊断编码，优先传 ICD-10；糖尿病示例 E14.90")
+    private String diagnosisCode;
+
+    @Schema(description = "诊断编码体系，默认 ICD-10")
+    private String diagnosisCodeSystem;
+
+    @Schema(description = "主诊断名称，如糖尿病、幽门螺杆菌感染")
     private String diagnosis;
 
     @Schema(description = "处方日期（ISO-8601 或 yyyy-MM-dd）")
@@ -33,8 +40,9 @@ public class QzHpPrescriptionRequest {
     @Schema(description = "治疗方法")
     private String therapy;
 
-    @Schema(description = "药品信息列表")
-    private List<String> medicines;
+    @Valid
+    @Schema(description = "药品信息列表，优先按药品编码识别；糖尿病场景示例可传胰岛素、利拉鲁肽、司美格鲁肽、替尔泊肽对应院内药品字典编码")
+    private List<QzHpMedicineItem> medicines;
 
     @Schema(description = "医院")
     private String hospital;

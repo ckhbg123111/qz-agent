@@ -1,10 +1,13 @@
 package com.zhongjia.web.vo.qz;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import lombok.Data;
 
+import java.util.List;
+
 @Data
-@Schema(name = "QzHpLabAppointmentRequest", description = "幽门螺杆菌检验预约请求")
+@Schema(name = "QzHpLabAppointmentRequest", description = "检验预约请求")
 public class QzHpLabAppointmentRequest {
 
     @Schema(description = "患者ID")
@@ -28,13 +31,20 @@ public class QzHpLabAppointmentRequest {
     @Schema(description = "执行科室")
     private String executeDepartment;
 
-    @Schema(description = "检验项目：其他呼气试验/糖化血红蛋白")
-    private String labItem;
+    @Schema(description = "主诊断编码，优先传 ICD-10；糖尿病示例 E14.90")
+    private String diagnosisCode;
+
+    @Schema(description = "诊断编码体系，默认 ICD-10")
+    private String diagnosisCodeSystem;
+
+    @Valid
+    @Schema(description = "检验项目列表，优先按编码识别；糖尿病场景示例可传 GLU_FAST（空腹血糖）、HBA1C（糖化血红蛋白）")
+    private List<QzHpLabItem> labItems;
 
     @Schema(description = "主诉")
     private String chiefComplaint;
 
-    @Schema(description = "诊断")
+    @Schema(description = "主诊断名称")
     private String diagnosis;
 
     @Schema(description = "备注")
