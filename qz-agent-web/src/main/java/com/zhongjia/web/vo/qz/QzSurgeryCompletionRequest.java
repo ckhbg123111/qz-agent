@@ -14,18 +14,24 @@ import java.util.List;
 @Schema(name = "QzSurgeryCompletionRequest", description = "手术完成单事件请求")
 public class QzSurgeryCompletionRequest extends QzSurgeryBaseEventRequest {
 
-    @NotBlank(message = "手术单号不能为空")
+    @Valid
+    @NotEmpty(message = "实施手术列表不能为空")
+    @Schema(description = "实施手术列表")
+    private List<QzOperationItem> performedOperationList;
+
+    @Valid
+    @Schema(description = "术前诊断列表")
+    private List<QzDiagnosisItem> preoperativeDiagnosisList;
+
     @Schema(description = "手术单号或手术流水号")
     private String surgeryNo;
 
     @Schema(description = "手术申请单号")
     private String applyNo;
 
-    @NotBlank(message = "手术状态不能为空")
     @Schema(description = "手术状态，完成场景建议为 COMPLETED")
     private String surgeryStatus;
 
-    @NotBlank(message = "实际开始时间不能为空")
     @Schema(description = "实际开始时间")
     private String actualStartTime;
 
@@ -37,28 +43,17 @@ public class QzSurgeryCompletionRequest extends QzSurgeryBaseEventRequest {
     private Integer operationDurationMinutes;
 
     @Valid
-    @Schema(description = "术前诊断列表")
-    private List<QzDiagnosisItem> preoperativeDiagnosisList;
-
-    @Valid
     @Schema(description = "术中诊断列表")
     private List<QzDiagnosisItem> intraoperativeDiagnosisList;
 
     @Valid
-    @NotEmpty(message = "术后诊断列表不能为空")
     @Schema(description = "术后诊断列表")
     private List<QzDiagnosisItem> postoperativeDiagnosisList;
 
-    @Valid
-    @NotEmpty(message = "实施手术列表不能为空")
-    @Schema(description = "实施手术列表")
-    private List<QzOperationItem> performedOperationList;
 
-    @NotBlank(message = "主刀医生工号不能为空")
     @Schema(description = "主刀医生工号")
     private String surgeonId;
 
-    @NotBlank(message = "主刀医生姓名不能为空")
     @Schema(description = "主刀医生姓名")
     private String surgeonName;
 

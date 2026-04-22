@@ -8,42 +8,36 @@ import lombok.Data;
 @Schema(name = "QzSurgeryBaseEventRequest", description = "手术全流程事件公共请求字段")
 public class QzSurgeryBaseEventRequest {
 
-    @NotBlank(message = "事件ID不能为空")
+    @NotBlank(message = "患者ID不能为空")
+    @Schema(description = "患者唯一标识")
+    private String patientId;
+
     @Schema(description = "事件唯一标识，建议作为幂等键")
     private String eventId;
 
-    @NotBlank(message = "traceId不能为空")
     @Schema(description = "链路追踪号")
     private String traceId;
 
-    @NotBlank(message = "事件时间不能为空")
     @Schema(description = "事件发生时间，ISO-8601")
     private String eventTime;
 
     @Schema(description = "事件类型")
     private String eventType;
 
-    @NotBlank(message = "hospitalId不能为空")
     @Schema(description = "平台侧医院唯一标识")
     private String hospitalId;
 
-    @NotBlank(message = "orgCode不能为空")
     @Schema(description = "医疗机构编码")
     private String orgCode;
 
     @Schema(description = "院区编码")
     private String campusCode;
 
-    @NotBlank(message = "sourceSystem不能为空")
     @Schema(description = "来源系统，如 HIS、EMR、ORMS、ANESTHESIA")
     private String sourceSystem;
 
     @Schema(description = "来源系统实例标识")
     private String sourceSystemInstance;
-
-    @NotBlank(message = "患者ID不能为空")
-    @Schema(description = "患者唯一标识")
-    private String patientId;
 
     @Schema(description = "患者姓名")
     private String patientName;
@@ -60,18 +54,15 @@ public class QzSurgeryBaseEventRequest {
     @Schema(description = "联系电话")
     private String mobile;
 
-    @NotBlank(message = "visitId不能为空")
     @Schema(description = "本次住院/就诊唯一标识")
     private String visitId;
 
-    @NotBlank(message = "visitNo不能为空")
     @Schema(description = "住院号/就诊号")
     private String visitNo;
 
     @Schema(description = "病案号")
     private String caseNo;
 
-    @NotBlank(message = "encounterType不能为空")
     @Schema(description = "就诊类型，如 INPATIENT")
     private String encounterType;
 

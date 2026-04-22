@@ -8,7 +8,6 @@ import lombok.Data;
 @Schema(name = "QzHpMedicineItem", description = "处方药品条目")
 public class QzHpMedicineItem {
 
-    @NotBlank(message = "药品编码不能为空")
     @Schema(description = "药品编码，优先传院内药品字典编码；示例：DRUG_INSULIN_001（胰岛素）、DRUG_LIRAGLUTIDE_001（利拉鲁肽）、DRUG_SEMAGLUTIDE_001（司美格鲁肽）、DRUG_TIRZEPATIDE_001（替尔泊肽）")
     private String medicineCode;
 

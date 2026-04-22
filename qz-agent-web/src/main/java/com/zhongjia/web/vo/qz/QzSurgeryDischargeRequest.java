@@ -18,11 +18,18 @@ public class QzSurgeryDischargeRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "出院时间")
     private String dischargeTime;
 
-    @NotBlank(message = "出院科室编码不能为空")
+    @Valid
+    @Schema(description = "本次住院完成手术列表，优先传 ICD-9-CM3 或院内手术编码；示例：肾穿刺活检 55.2300，屈光手术可传院内编码 EYE_REFRACT_001")
+    private List<QzOperationItem> performedOperationList;
+
+    @Valid
+    @NotEmpty(message = "出院诊断列表不能为空")
+    @Schema(description = "出院诊断列表")
+    private List<QzDiagnosisItem> dischargeDiagnosisList;
+
     @Schema(description = "出院科室编码")
     private String dischargeDepartmentCode;
 
-    @NotBlank(message = "出院科室名称不能为空")
     @Schema(description = "出院科室名称")
     private String dischargeDepartmentName;
 
@@ -38,21 +45,11 @@ public class QzSurgeryDischargeRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "住院天数")
     private Integer inpatientDays;
 
-    @NotBlank(message = "出院去向不能为空")
     @Schema(description = "出院去向或转归")
     private String dischargeDisposition;
 
     @Schema(description = "出院时情况")
     private String dischargeCondition;
-
-    @Valid
-    @NotEmpty(message = "出院诊断列表不能为空")
-    @Schema(description = "出院诊断列表")
-    private List<QzDiagnosisItem> dischargeDiagnosisList;
-
-    @Valid
-    @Schema(description = "本次住院完成手术列表，优先传 ICD-9-CM3 或院内手术编码；示例：肾穿刺活检 55.2300，屈光手术可传院内编码 EYE_REFRACT_001")
-    private List<QzOperationItem> performedOperationList;
 
     @Schema(description = "出院经治医生工号")
     private String dischargeDoctorId;

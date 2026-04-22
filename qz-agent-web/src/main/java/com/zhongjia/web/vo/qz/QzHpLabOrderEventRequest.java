@@ -12,24 +12,26 @@ import java.util.List;
 @Schema(name = "QzHpLabOrderEventRequest", description = "检验开单事件请求")
 public class QzHpLabOrderEventRequest {
 
-    @NotBlank(message = "事件ID不能为空")
+    @NotBlank(message = "患者ID不能为空")
+    @Schema(description = "患者唯一标识")
+    private String patientId;
+
+    @Valid
+    @NotEmpty(message = "检验项目列表不能为空")
+    @Schema(description = "检验项目列表，优先传院内 LIS 项目编码；示例：GLU_FAST（空腹血糖）、HBA1C（糖化血红蛋白）、C13BT（13C/14C 呼气试验）")
+    private List<QzHpLabItem> labItems;
+
     @Schema(description = "事件唯一标识，建议作为幂等键")
     private String eventId;
 
     @Schema(description = "链路追踪号")
     private String traceId;
 
-    @NotBlank(message = "事件时间不能为空")
     @Schema(description = "事件发生时间，ISO-8601")
     private String eventTime;
 
-    @NotBlank(message = "来源系统不能为空")
     @Schema(description = "来源系统，如 HIS、EMR、CPOE")
     private String sourceSystem;
-
-    @NotBlank(message = "患者ID不能为空")
-    @Schema(description = "患者唯一标识")
-    private String patientId;
 
     @Schema(description = "患者姓名")
     private String patientName;
@@ -55,7 +57,6 @@ public class QzHpLabOrderEventRequest {
     @Schema(description = "申请科室名称")
     private String departmentName;
 
-    @NotBlank(message = "检验申请单号不能为空")
     @Schema(description = "检验申请单号，示例：LIS202604220001")
     private String labApplyNo;
 
@@ -104,11 +105,6 @@ public class QzHpLabOrderEventRequest {
 
     @Schema(description = "主诉")
     private String chiefComplaint;
-
-    @Valid
-    @NotEmpty(message = "检验项目列表不能为空")
-    @Schema(description = "检验项目列表，优先传院内 LIS 项目编码；示例：GLU_FAST（空腹血糖）、HBA1C（糖化血红蛋白）、C13BT（13C/14C 呼气试验）")
-    private List<QzHpLabItem> labItems;
 
     @Schema(description = "备注")
     private String remark;

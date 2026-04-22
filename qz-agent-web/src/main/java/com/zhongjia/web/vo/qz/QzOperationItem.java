@@ -9,16 +9,15 @@ import lombok.Data;
 @Schema(name = "QzOperationItem", description = "手术条目")
 public class QzOperationItem {
 
-    @NotNull(message = "手术序号不能为空")
-    @Schema(description = "手术序号")
-    private Integer operationSeq;
-
     @Schema(description = "ICD-9-CM3 或院内手术编码")
     private String operationCode;
 
     @NotBlank(message = "手术名称不能为空")
     @Schema(description = "手术名称")
     private String operationName;
+
+    @Schema(description = "手术序号")
+    private Integer operationSeq;
 
     @Schema(description = "手术部位")
     private String operationSite;

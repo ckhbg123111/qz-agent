@@ -14,7 +14,14 @@ import java.util.List;
 @Schema(name = "QzSurgeryConfirmationRequest", description = "手术确认事件请求")
 public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
 
-    @NotBlank(message = "手术单号不能为空")
+    @Valid
+    @NotEmpty(message = "术前诊断列表不能为空")
+    @Schema(description = "术前诊断列表")
+    private List<QzDiagnosisItem> preoperativeDiagnosisList;
+
+    @Valid
+    @Schema(description = "拟手术列表")
+    private List<QzOperationItem> plannedOperationList;
     @Schema(description = "手术单号或手术流水号")
     private String surgeryNo;
 
@@ -24,7 +31,6 @@ public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "手术排程号")
     private String scheduleNo;
 
-    @NotBlank(message = "手术状态不能为空")
     @Schema(description = "手术状态，确认场景建议为 CONFIRMED")
     private String surgeryStatus;
 
@@ -39,16 +45,6 @@ public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
 
     @Schema(description = "手术类别，如 ELECTIVE、LIMITED、EMERGENCY")
     private String operationCategory;
-
-    @Valid
-    @NotEmpty(message = "术前诊断列表不能为空")
-    @Schema(description = "术前诊断列表")
-    private List<QzDiagnosisItem> preoperativeDiagnosisList;
-
-    @Valid
-    @NotEmpty(message = "拟手术列表不能为空")
-    @Schema(description = "拟手术列表")
-    private List<QzOperationItem> plannedOperationList;
 
     @Valid
     @Schema(description = "确认手术列表")
@@ -79,11 +75,9 @@ public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "申请科室名称")
     private String departmentName;
 
-    @NotBlank(message = "主刀医生工号不能为空")
     @Schema(description = "主刀医生工号")
     private String surgeonId;
 
-    @NotBlank(message = "主刀医生姓名不能为空")
     @Schema(description = "主刀医生姓名")
     private String surgeonName;
 
@@ -97,11 +91,9 @@ public class QzSurgeryConfirmationRequest extends QzSurgeryBaseEventRequest {
     @Schema(description = "麻醉医生姓名")
     private String anesthesiologistName;
 
-    @NotBlank(message = "麻醉方式编码不能为空")
     @Schema(description = "麻醉方式编码")
     private String anesthesiaMethodCode;
 
-    @NotBlank(message = "麻醉方式名称不能为空")
     @Schema(description = "麻醉方式名称")
     private String anesthesiaMethodName;
 
