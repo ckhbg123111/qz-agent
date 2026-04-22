@@ -22,6 +22,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         "/api/hello",
                         "/api/auth/login",
                         "/api/test/**",
+                        "/api/b2b/qz/hp/lab-order-event",
                         "/api/b2b/qz/hp/lab-appointment",
                         "/api/b2b/qz/hp/report",
                         "/api/b2b/qz/hp/prescription",

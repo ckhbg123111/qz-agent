@@ -14,6 +14,7 @@ import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.qz.QzHpC13ReportRequest;
 import com.zhongjia.web.vo.qz.QzHpDiagnosisEventRequest;
 import com.zhongjia.web.vo.qz.QzHpLabAppointmentRequest;
+import com.zhongjia.web.vo.qz.QzHpLabOrderEventRequest;
 import com.zhongjia.web.vo.qz.QzHpMedicineItem;
 import com.zhongjia.web.vo.qz.QzHpLinkVO;
 import com.zhongjia.web.vo.qz.QzHpPrescriptionRequest;
@@ -88,6 +89,43 @@ public class QzHpInterfaceController {
         );
         String jumpLink = pushAndLog(PushTaskConstants.TAG_LAB_APPOINTMENT, effectivePatientId, wechatRequest, request);
         return Result.success(QzHpLinkVO.of(maskLinkIfNeeded(jumpLink)));
+    }
+
+    @PostMapping("/lab-order-event")
+    @Operation(summary = "检验开单事件")
+    public Result<Boolean> labOrderEvent(@RequestBody @Valid QzHpLabOrderEventRequest request) {
+        LOGGER.info(
+                "检验开单事件入参: eventId={}, traceId={}, eventTime={}, sourceSystem={}, patientId={}, patientName={}, visitId={}, visitNo={}, encounterType={}, departmentCode={}, departmentName={}, labApplyNo={}, orderNo={}, orderTime={}, applyDoctorId={}, applyDoctorName={}, executeDepartmentCode={}, executeDepartmentName={}, priority={}, diagnosisCode={}, diagnosisCodeSystem={}, diagnosis={}, specimenTypeCode={}, specimenTypeName={}, specimenCollectionSite={}, clinicalPurpose={}, labItems={}, remark={}",
+                request.getEventId(),
+                request.getTraceId(),
+                request.getEventTime(),
+                request.getSourceSystem(),
+                request.getPatientId(),
+                request.getPatientName(),
+                request.getVisitId(),
+                request.getVisitNo(),
+                request.getEncounterType(),
+                request.getDepartmentCode(),
+                request.getDepartmentName(),
+                request.getLabApplyNo(),
+                request.getOrderNo(),
+                request.getOrderTime(),
+                request.getApplyDoctorId(),
+                request.getApplyDoctorName(),
+                request.getExecuteDepartmentCode(),
+                request.getExecuteDepartmentName(),
+                request.getPriority(),
+                request.getDiagnosisCode(),
+                request.getDiagnosisCodeSystem(),
+                request.getDiagnosis(),
+                request.getSpecimenTypeCode(),
+                request.getSpecimenTypeName(),
+                request.getSpecimenCollectionSite(),
+                request.getClinicalPurpose(),
+                request.getLabItems(),
+                request.getRemark()
+        );
+        return Result.success(Boolean.TRUE);
     }
 
     @PostMapping("/report")
