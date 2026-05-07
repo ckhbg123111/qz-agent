@@ -9,13 +9,13 @@ import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.exception.BizException;
 import com.zhongjia.web.integration.wechat.WechatMessageClient;
 import com.zhongjia.web.push.DelayedPushTaskService;
+import com.zhongjia.web.push.EducationPushCoordinator;
 import com.zhongjia.web.push.PushTaskConstants;
 import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.qz.QzHpC13ReportRequest;
 import com.zhongjia.web.vo.qz.QzHpDiagnosisEventRequest;
 import com.zhongjia.web.vo.qz.QzHpLabAppointmentRequest;
 import com.zhongjia.web.vo.qz.QzHpLabOrderEventRequest;
-import com.zhongjia.web.vo.qz.QzHpMedicineItem;
 import com.zhongjia.web.vo.qz.QzHpLinkVO;
 import com.zhongjia.web.vo.qz.QzHpPrescriptionRequest;
 import com.zhongjia.web.vo.qz.QzHpRegistrationEventRequest;
@@ -35,10 +35,6 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 @RestController
 @Tag(name = "依据检查信息返回宣教落地页对接接口（幽门螺杆菌例）")
@@ -55,6 +51,7 @@ public class QzHpInterfaceController {
     private final WechatPushLogService wechatPushLogService;
     private final ObjectMapper objectMapper;
     private final DelayedPushTaskService delayedPushTaskService;
+    private final EducationPushCoordinator educationPushCoordinator;
 
     public QzHpInterfaceController(
             WechatMessageClient wechatMessageClient,
@@ -62,7 +59,8 @@ public class QzHpInterfaceController {
             WechatPushProperties wechatPushProperties,
             WechatPushLogService wechatPushLogService,
             ObjectMapper objectMapper,
-            DelayedPushTaskService delayedPushTaskService
+            DelayedPushTaskService delayedPushTaskService,
+            EducationPushCoordinator educationPushCoordinator
     ) {
         this.wechatMessageClient = wechatMessageClient;
         this.qzHpProperties = qzHpProperties;
@@ -70,6 +68,7 @@ public class QzHpInterfaceController {
         this.wechatPushLogService = wechatPushLogService;
         this.objectMapper = objectMapper;
         this.delayedPushTaskService = delayedPushTaskService;
+        this.educationPushCoordinator = educationPushCoordinator;
     }
 
     @PostMapping("/lab-appointment")
@@ -127,21 +126,8 @@ public class QzHpInterfaceController {
     @PostMapping("/prescription")
     @Operation(summary = "处方开具（推送）")
     public Result<QzHpLinkVO> prescription(@RequestBody @Valid QzHpPrescriptionRequest request) {
-        String prescriptionTag = resolvePrescriptionTag(request);
-        String prescriptionContent = resolvePrescriptionContent(request);
-        String effectivePatientId = delayedPushTaskService.resolvePatientIdForPush(request.getPatientId());
-        WechatMessageRequest wechatRequest = buildWechatRequest(
-                prescriptionTag,
-                effectivePatientId,
-                request.getPatientName(),
-                request.getGender(),
-                request.getAge(),
-                request.getDiagnosis(),
-                prescriptionContent,
-                request.getPrescriptionDate(),
-                ""
-        );
-        pushAndLog(prescriptionTag, effectivePatientId, wechatRequest, request);
+        LOGGER.info("处方开具事件入参: {}", toRequestJson(request));
+        educationPushCoordinator.handlePrescriptionEvent(request);
         return Result.success(QzHpLinkVO.of(""));
     }
 
@@ -149,6 +135,7 @@ public class QzHpInterfaceController {
     @Operation(summary = "病历确诊事件")
     public Result<Boolean> diagnosisEvent(@RequestBody @Valid QzHpDiagnosisEventRequest request) {
         LOGGER.info("病历确诊事件入参: {}", toRequestJson(request));
+        educationPushCoordinator.handleDiagnosisEvent(request);
         return Result.success(Boolean.TRUE);
     }
 
@@ -157,50 +144,6 @@ public class QzHpInterfaceController {
     public Result<Boolean> registrationEvent(@RequestBody @Valid QzHpRegistrationEventRequest request) {
         LOGGER.info("挂号事件入参: {}", toRequestJson(request));
         return Result.success(Boolean.TRUE);
-    }
-
-    private String resolvePrescriptionTag(QzHpPrescriptionRequest request) {
-        String therapy = defaultString(request.getTherapy()).toLowerCase(Locale.ROOT);
-        if (therapy.contains("二联") || therapy.contains("2联")) {
-            return PushTaskConstants.TAG_PRESCRIPTION_2;
-        }
-        return PushTaskConstants.TAG_PRESCRIPTION;
-    }
-
-    private String resolvePrescriptionContent(QzHpPrescriptionRequest request) {
-        String medicineItems = joinMedicineItems(request.getMedicineItem());
-        if (!medicineItems.isBlank()) {
-            return medicineItems;
-        }
-        String medicineNames = joinMedicineNames(request.getMedicines());
-        if (!medicineNames.isBlank()) {
-            return medicineNames;
-        }
-        return defaultString(request.getTherapy());
-    }
-
-    private String joinMedicineItems(List<QzHpMedicineItem> medicines) {
-        if (medicines == null || medicines.isEmpty()) {
-            return "";
-        }
-        return medicines.stream()
-                .filter(Objects::nonNull)
-                .map(QzHpMedicineItem::getMedicineName)
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(item -> !item.isBlank())
-                .collect(Collectors.joining("；"));
-    }
-
-    private String joinMedicineNames(List<String> medicines) {
-        if (medicines == null || medicines.isEmpty()) {
-            return "";
-        }
-        return medicines.stream()
-                .filter(Objects::nonNull)
-                .map(String::trim)
-                .filter(item -> !item.isBlank())
-                .collect(Collectors.joining("；"));
     }
 
     private String pushAndLog(String tag, String patientId, WechatMessageRequest wechatRequest, Object rawRequest) {

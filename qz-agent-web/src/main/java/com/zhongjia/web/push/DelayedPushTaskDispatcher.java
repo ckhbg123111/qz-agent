@@ -1,22 +1,13 @@
 package com.zhongjia.web.push;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.zhongjia.biz.entity.WechatPushLog;
 import com.zhongjia.biz.entity.WechatPushTask;
-import com.zhongjia.biz.service.WechatPushLogService;
 import com.zhongjia.biz.service.WechatPushTaskService;
 import com.zhongjia.web.config.PushTaskProperties;
-import com.zhongjia.web.config.QzHpProperties;
-import com.zhongjia.web.config.WechatPushProperties;
-import com.zhongjia.web.integration.wechat.WechatMessageClient;
-import com.zhongjia.web.integration.wechat.WechatPushClient;
 import com.zhongjia.web.vo.wechat.WechatMessageRequest;
-import com.zhongjia.web.vo.wechat.WechatMessageResponse;
-import com.zhongjia.web.vo.wechat.WechatMessageResponseData;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,43 +20,30 @@ public class DelayedPushTaskDispatcher {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DelayedPushTaskDispatcher.class);
     private static final ZoneId SHANGHAI_ZONE_ID = ZoneId.of("Asia/Shanghai");
-    private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final StringRedisTemplate stringRedisTemplate;
     private final PushTaskProperties pushTaskProperties;
     private final WechatPushTaskService wechatPushTaskService;
-    private final WechatPushLogService wechatPushLogService;
-    private final WechatMessageClient wechatMessageClient;
-    private final WechatPushClient wechatPushClient;
-    private final QzHpProperties qzHpProperties;
-    private final WechatPushProperties wechatPushProperties;
     private final ObjectMapper objectMapper;
     private final DelayedPushTaskService delayedPushTaskService;
+    private final WechatPushExecutor wechatPushExecutor;
     private final MeterRegistry meterRegistry;
 
     public DelayedPushTaskDispatcher(
             StringRedisTemplate stringRedisTemplate,
             PushTaskProperties pushTaskProperties,
             WechatPushTaskService wechatPushTaskService,
-            WechatPushLogService wechatPushLogService,
-            WechatMessageClient wechatMessageClient,
-            WechatPushClient wechatPushClient,
-            QzHpProperties qzHpProperties,
-            WechatPushProperties wechatPushProperties,
             ObjectMapper objectMapper,
             DelayedPushTaskService delayedPushTaskService,
+            WechatPushExecutor wechatPushExecutor,
             MeterRegistry meterRegistry
     ) {
         this.stringRedisTemplate = stringRedisTemplate;
         this.pushTaskProperties = pushTaskProperties;
         this.wechatPushTaskService = wechatPushTaskService;
-        this.wechatPushLogService = wechatPushLogService;
-        this.wechatMessageClient = wechatMessageClient;
-        this.wechatPushClient = wechatPushClient;
-        this.qzHpProperties = qzHpProperties;
-        this.wechatPushProperties = wechatPushProperties;
         this.objectMapper = objectMapper;
         this.delayedPushTaskService = delayedPushTaskService;
+        this.wechatPushExecutor = wechatPushExecutor;
         this.meterRegistry = meterRegistry;
     }
 
@@ -124,21 +102,14 @@ public class DelayedPushTaskDispatcher {
 
     private void executeTask(WechatPushTask task) {
         LocalDateTime now = LocalDateTime.now(SHANGHAI_ZONE_ID);
-        WechatPushLog pushLog = buildInitPushLog(task);
         try {
             WechatMessageRequest messageRequest = objectMapper.readValue(task.getRequestJson(), WechatMessageRequest.class);
-            WechatMessageResponse response = wechatMessageClient.fetchMessage(messageRequest);
-            WechatMessageResponseData data = response.getData();
-            String messageXml = buildPushMessageXml(data);
-            String bizcode = resolveBizcode();
-            pushSoapMessageIfEnabled(task, bizcode, messageXml);
-
-            pushLog.setWechatApiCode(response.getCode());
-            pushLog.setWechatApiMessage(response.getMessage());
-            pushLog.setJumpLink(data.getJumpLink());
-            pushLog.setMessage(messageXml);
-            pushLog.setPushStatus(PushTaskConstants.TASK_STATUS_SUCCESS);
-            wechatPushLogService.save(pushLog);
+            PushExecutionResult result = wechatPushExecutor.executeSerialized(
+                    messageRequest,
+                    task.getRequestJson(),
+                    task.getTaskType(),
+                    task.getId()
+            );
 
             wechatPushTaskService.lambdaUpdate()
                     .eq(WechatPushTask::getId, task.getId())
@@ -147,19 +118,17 @@ public class DelayedPushTaskDispatcher {
                     .set(WechatPushTask::getLastErrorMessage, "")
                     .set(WechatPushTask::getUpdateTime, now)
                     .update();
-            meterRegistry.counter("push.task.dispatch.success", "taskType", task.getTaskType()).increment();
-            LOGGER.info("延时推送成功: taskId={}, taskType={}, patientId={}, retryCount={}",
-                    task.getId(), task.getTaskType(), task.getPatientId(), task.getRetryCount());
+            String resultTag = result.isSkipped() ? "skipped_success_record" : "pushed";
+            meterRegistry.counter("push.task.dispatch.success", "taskType", task.getTaskType(), "result", resultTag).increment();
+            LOGGER.info("延时推送处理完成: taskId={}, taskType={}, patientId={}, retryCount={}, result={}",
+                    task.getId(), task.getTaskType(), task.getPatientId(), task.getRetryCount(), resultTag);
         } catch (Exception ex) {
             LOGGER.error("延时推送执行失败: taskId={}, patientId={}, tag={}", task.getId(), task.getPatientId(), task.getTag(), ex);
-            handleTaskFailure(task, pushLog, ex, now);
+            handleTaskFailure(task, ex, now);
         }
     }
 
-    private void handleTaskFailure(WechatPushTask task, WechatPushLog pushLog, Exception ex, LocalDateTime now) {
-        pushLog.setErrorMessage(ex.getMessage());
-        wechatPushLogService.save(pushLog);
-
+    private void handleTaskFailure(WechatPushTask task, Exception ex, LocalDateTime now) {
         int currentRetry = task.getRetryCount() == null ? 0 : task.getRetryCount();
         int nextRetryCount = currentRetry + 1;
         int maxRetryCount = task.getMaxRetryCount() == null ? pushTaskProperties.getMaxRetryCount() : task.getMaxRetryCount();
@@ -196,62 +165,6 @@ public class DelayedPushTaskDispatcher {
         int cappedRetry = Math.min(retryCount, 6);
         int multiplier = 1 << Math.max(cappedRetry - 1, 0);
         return pushTaskProperties.getBaseRetryDelayMinutes() * multiplier;
-    }
-
-    private WechatPushLog buildInitPushLog(WechatPushTask task) {
-        WechatPushLog log = new WechatPushLog();
-        log.setBizcode(resolveBizcode());
-        log.setPatientId(defaultString(task.getPatientId()));
-        log.setTag(defaultString(task.getTag()));
-        log.setPushStatus(PushTaskConstants.TASK_STATUS_FAILED);
-        log.setMessage("");
-        log.setRequestJson(defaultString(task.getRequestJson()));
-        log.setCreateTime(LocalDateTime.now(SHANGHAI_ZONE_ID));
-        return log;
-    }
-
-    private String resolveBizcode() {
-        String configuredBizcode = defaultString(wechatPushProperties.getBizcode());
-        if (configuredBizcode.isBlank()) {
-            return "yytz";
-        }
-        return configuredBizcode;
-    }
-
-    private void pushSoapMessageIfEnabled(WechatPushTask task, String bizcode, String messageXml) {
-        if (qzHpProperties.isMaskReturnLink()) {
-            LOGGER.info("QZ_HP_MASK_RETURN_LINK=true，跳过定时任务SOAP真实调用: taskId={}, patientId={}, tag={}, bizcode={}",
-                    task.getId(), task.getPatientId(), task.getTag(), bizcode);
-            return;
-        }
-        wechatPushClient.pushMessage(bizcode, task.getPatientId(), messageXml);
-    }
-
-    private String buildPushMessageXml(WechatMessageResponseData data) {
-        String title = defaultString(data.getReplyTitle());
-        String description = defaultString(data.getReplyDescription());
-        String keyword2 = description.isBlank() ? title : description;
-        String pushTime = LocalDateTime.now(SHANGHAI_ZONE_ID).format(PUSH_TIME_FORMATTER);
-        String jumpLink = defaultString(data.getJumpLink());
-
-        return "<message>"
-                + "<first>" + escapeXml(title) + "</first>"
-                + "<keyword1>" + escapeXml(pushTime) + "</keyword1>"
-                + "<keyword2>" + escapeXml(keyword2) + "</keyword2>"
-                + "<remark/>"
-                + "<hisURL>" + escapeXml(jumpLink) + "</hisURL>"
-                + "</message>";
-    }
-
-    private String escapeXml(String value) {
-        if (value == null || value.isEmpty()) {
-            return "";
-        }
-        return value.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&apos;");
     }
 
     private String trimErrorMessage(String value) {

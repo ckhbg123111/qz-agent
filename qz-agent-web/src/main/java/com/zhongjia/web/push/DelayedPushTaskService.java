@@ -113,6 +113,18 @@ public class DelayedPushTaskService {
         );
     }
 
+    public Long createConfiguredTask(
+            String taskType,
+            String patientId,
+            String tag,
+            String sourceNo,
+            LocalDateTime baseTime,
+            LocalDateTime triggerTime,
+            WechatMessageRequest wechatRequest
+    ) {
+        return createTask(taskType, patientId, tag, sourceNo, baseTime, triggerTime, wechatRequest);
+    }
+
     public boolean enqueueTask(Long taskId, LocalDateTime executeTime) {
         String member = String.valueOf(taskId);
         double score = executeTime.atZone(SHANGHAI_ZONE_ID).toInstant().toEpochMilli();
