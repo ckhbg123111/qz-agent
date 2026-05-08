@@ -29,6 +29,18 @@ public class QzEducationPushRule {
 
     private String delayUnit;
 
+    private String triggerTimeStrategy;
+
+    private String anchorField;
+
+    private Integer anchorDayOffset;
+
+    private String anchorTime;
+
+    private String latePolicy;
+
+    private String windowEndField;
+
     private Integer enabled;
 
     private Integer sortOrder;

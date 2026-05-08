@@ -42,6 +42,25 @@ public class EducationPushRuleEngine {
                 .toList();
     }
 
+    public List<QzEducationPushRule> matchEntryRules(EducationPushEventContext context) {
+        List<QzEducationPushRule> rules = ruleService.lambdaQuery()
+                .eq(QzEducationPushRule::getEventType, context.getEventType())
+                .eq(QzEducationPushRule::getEnabled, 1)
+                .and(wrapper -> wrapper.isNull(QzEducationPushRule::getPreviousRuleCode)
+                        .or()
+                        .eq(QzEducationPushRule::getPreviousRuleCode, ""))
+                .orderByAsc(QzEducationPushRule::getSortOrder)
+                .list();
+        if (rules == null || rules.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, List<QzEducationPushRuleCondition>> conditionsByRuleId = loadConditions(rules);
+        return rules.stream()
+                .filter(rule -> matchesRule(context, conditionsByRuleId.get(rule.getId())))
+                .toList();
+    }
+
     public List<QzEducationPushRule> findDelayedRules(String previousRuleCode) {
         String normalizedPreviousRuleCode = defaultString(previousRuleCode).trim();
         if (normalizedPreviousRuleCode.isEmpty()) {

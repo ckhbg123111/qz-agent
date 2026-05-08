@@ -7,6 +7,7 @@ import com.zhongjia.web.vo.qz.QzSurgeryAdmissionRequest;
 import com.zhongjia.web.vo.qz.QzSurgeryCompletionRequest;
 import com.zhongjia.web.vo.qz.QzSurgeryConfirmationRequest;
 import com.zhongjia.web.vo.qz.QzSurgeryDischargeRequest;
+import com.zhongjia.web.push.EducationPushCoordinator;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,9 +25,11 @@ public class QzSurgeryInterfaceController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QzSurgeryInterfaceController.class);
     private final ObjectMapper objectMapper;
+    private final EducationPushCoordinator educationPushCoordinator;
 
-    public QzSurgeryInterfaceController(ObjectMapper objectMapper) {
+    public QzSurgeryInterfaceController(ObjectMapper objectMapper, EducationPushCoordinator educationPushCoordinator) {
         this.objectMapper = objectMapper;
+        this.educationPushCoordinator = educationPushCoordinator;
     }
 
     @PostMapping("/admission")
@@ -40,6 +43,12 @@ public class QzSurgeryInterfaceController {
     @Operation(summary = "手术确认")
     public Result<Boolean> confirmation(@RequestBody @Valid QzSurgeryConfirmationRequest request) {
         LOGGER.info("手术确认事件入参: {}", toRequestJson(request));
+        try {
+            educationPushCoordinator.handleSurgeryConfirmationEvent(request);
+        } catch (Exception ex) {
+            LOGGER.error("手术确认宣教推送处理失败，接口继续返回成功: patientId={}, visitNo={}",
+                    request.getPatientId(), request.getVisitNo(), ex);
+        }
         return Result.success(Boolean.TRUE);
     }
 
@@ -47,6 +56,12 @@ public class QzSurgeryInterfaceController {
     @Operation(summary = "手术完成单")
     public Result<Boolean> completion(@RequestBody @Valid QzSurgeryCompletionRequest request) {
         LOGGER.info("手术完成单事件入参: {}", toRequestJson(request));
+        try {
+            educationPushCoordinator.handleSurgeryCompletionEvent(request);
+        } catch (Exception ex) {
+            LOGGER.error("手术完成宣教推送处理失败，接口继续返回成功: patientId={}, visitNo={}",
+                    request.getPatientId(), request.getVisitNo(), ex);
+        }
         return Result.success(Boolean.TRUE);
     }
 

@@ -2,9 +2,14 @@ package com.zhongjia.web.push;
 
 import com.zhongjia.biz.entity.QzEducationPushRule;
 import com.zhongjia.biz.service.WechatPushSuccessRecordService;
+import com.zhongjia.web.vo.qz.QzDiagnosisItem;
 import com.zhongjia.web.vo.qz.QzHpDiagnosisEventRequest;
 import com.zhongjia.web.vo.qz.QzHpMedicineItem;
 import com.zhongjia.web.vo.qz.QzHpPrescriptionRequest;
+import com.zhongjia.web.vo.qz.QzOperationItem;
+import com.zhongjia.web.vo.qz.QzSurgeryBaseEventRequest;
+import com.zhongjia.web.vo.qz.QzSurgeryCompletionRequest;
+import com.zhongjia.web.vo.qz.QzSurgeryConfirmationRequest;
 import com.zhongjia.web.vo.wechat.WechatMessageRequest;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -104,6 +109,40 @@ public class EducationPushCoordinator {
         processMatchedRules(context, request, decisionTime);
     }
 
+    public void handleSurgeryConfirmationEvent(QzSurgeryConfirmationRequest request) {
+        LocalDateTime decisionTime = LocalDateTime.now(SHANGHAI_ZONE_ID);
+        EducationPushEventContext context = buildSurgeryContext(
+                request,
+                EducationPushRuleConstants.EVENT_TYPE_SURGERY_CONFIRMATION,
+                extractDiagnosisCodes(request.getPreoperativeDiagnosisList()),
+                extractOperationCodes(request.getPlannedOperationList()),
+                List.of(),
+                extractDiagnosisNames(request.getPreoperativeDiagnosisList()),
+                request.getPlannedStartTime(),
+                firstNonBlank(request.getSurgeryNo(), request.getScheduleNo(), request.getApplyNo(), request.getVisitNo(), request.getEventId()),
+                decisionTime
+        );
+        putBusinessTime(context, EducationPushRuleConstants.FIELD_PLANNED_START_TIME, request.getPlannedStartTime());
+        processConfiguredEntryRulesSafely(context, request, decisionTime);
+    }
+
+    public void handleSurgeryCompletionEvent(QzSurgeryCompletionRequest request) {
+        LocalDateTime decisionTime = LocalDateTime.now(SHANGHAI_ZONE_ID);
+        EducationPushEventContext context = buildSurgeryContext(
+                request,
+                EducationPushRuleConstants.EVENT_TYPE_SURGERY_COMPLETION,
+                extractDiagnosisCodes(request.getPreoperativeDiagnosisList()),
+                List.of(),
+                extractOperationCodes(request.getPerformedOperationList()),
+                extractDiagnosisNames(request.getPreoperativeDiagnosisList()),
+                request.getActualEndTime(),
+                firstNonBlank(request.getSurgeryNo(), request.getApplyNo(), request.getVisitNo(), request.getEventId()),
+                decisionTime
+        );
+        putBusinessTime(context, EducationPushRuleConstants.FIELD_ACTUAL_END_TIME, request.getActualEndTime());
+        processConfiguredEntryRulesSafely(context, request, decisionTime);
+    }
+
     private void processMatchedRules(EducationPushEventContext context, Object rawRequest, LocalDateTime decisionTime) {
         List<QzEducationPushRule> matchedRules = ruleEngine.matchImmediateRules(context);
         if (matchedRules.isEmpty()) {
@@ -119,6 +158,75 @@ public class EducationPushCoordinator {
             LOGGER.info("宣教即时推送处理完成: ruleCode={}, patientId={}, tag={}",
                     rule.getRuleCode(), context.getPatientId(), rule.getTag());
         }
+    }
+
+    private void processConfiguredEntryRulesSafely(
+            EducationPushEventContext context,
+            Object rawRequest,
+            LocalDateTime decisionTime
+    ) {
+        List<QzEducationPushRule> matchedRules;
+        try {
+            matchedRules = ruleEngine.matchEntryRules(context);
+        } catch (Exception ex) {
+            LOGGER.error("宣教推送规则匹配失败: eventType={}, patientId={}",
+                    context.getEventType(), context.getPatientId(), ex);
+            return;
+        }
+        if (matchedRules.isEmpty()) {
+            LOGGER.info("宣教推送规则未命中: eventType={}, patientId={}",
+                    context.getEventType(), context.getPatientId());
+            return;
+        }
+
+        for (QzEducationPushRule rule : matchedRules) {
+            try {
+                processConfiguredRule(rule, context, rawRequest, decisionTime);
+            } catch (Exception ex) {
+                LOGGER.error("宣教推送规则处理失败，接口继续返回成功: ruleCode={}, patientId={}, tag={}",
+                        rule.getRuleCode(), context.getPatientId(), rule.getTag(), ex);
+            }
+        }
+    }
+
+    private void processConfiguredRule(
+            QzEducationPushRule rule,
+            EducationPushEventContext context,
+            Object rawRequest,
+            LocalDateTime decisionTime
+    ) {
+        if (wechatPushSuccessRecordService.hasSuccess(context.getPatientId(), rule.getTag())) {
+            LOGGER.info("宣教推送已成功过，不再处理: ruleCode={}, patientId={}, tag={}",
+                    rule.getRuleCode(), context.getPatientId(), rule.getTag());
+            return;
+        }
+
+        EducationPushScheduleDecision decision = EducationPushScheduleCalculator.decide(rule, context, decisionTime);
+        if (EducationPushScheduleDecision.Action.SKIP.equals(decision.action())) {
+            LOGGER.info("宣教推送规则已跳过: ruleCode={}, patientId={}, tag={}, reason={}",
+                    rule.getRuleCode(), context.getPatientId(), rule.getTag(), decision.reason());
+            return;
+        }
+
+        WechatMessageRequest messageRequest = buildWechatRequest(rule.getTag(), context, resolveExamTime(rule, context, decisionTime));
+        if (EducationPushScheduleDecision.Action.CREATE_DELAYED_TASK.equals(decision.action())) {
+            Long taskId = delayedPushTaskService.createConfiguredTask(
+                    rule.getRuleCode(),
+                    context.getPatientId(),
+                    rule.getTag(),
+                    firstNonBlank(context.getSourceNo(), rule.getRuleCode()),
+                    resolveBaseTime(rule, context, decisionTime),
+                    decision.triggerTime(),
+                    messageRequest
+            );
+            LOGGER.info("宣教延时推送任务已创建: taskId={}, ruleCode={}, patientId={}, tag={}, triggerTime={}, reason={}",
+                    taskId, rule.getRuleCode(), context.getPatientId(), rule.getTag(), decision.triggerTime(), decision.reason());
+            return;
+        }
+
+        wechatPushExecutor.execute(messageRequest, rawRequest, rule.getRuleCode(), null);
+        LOGGER.info("宣教即时推送处理完成: ruleCode={}, patientId={}, tag={}, reason={}",
+                rule.getRuleCode(), context.getPatientId(), rule.getTag(), decision.reason());
     }
 
     private void createDelayedTasks(QzEducationPushRule immediateRule, EducationPushEventContext context, LocalDateTime baseTime) {
@@ -180,6 +288,100 @@ public class EducationPushCoordinator {
         return request;
     }
 
+    private EducationPushEventContext buildSurgeryContext(
+            QzSurgeryBaseEventRequest request,
+            String eventType,
+            List<String> preoperativeDiagnosisCodes,
+            List<String> plannedOperationCodes,
+            List<String> performedOperationCodes,
+            String diagnosis,
+            String examTime,
+            String sourceNo,
+            LocalDateTime decisionTime
+    ) {
+        EducationPushEventContext context = new EducationPushEventContext();
+        context.setEventType(eventType);
+        context.setPatientId(delayedPushTaskService.resolvePatientIdForPush(request.getPatientId()));
+        context.setPatientName(request.getPatientName());
+        context.setGender(request.getGender());
+        context.setAge(request.getAge());
+        context.setDiagnosis(diagnosis);
+        context.setDiagnosisCodeSystem("");
+        context.setDiagnosisCode("");
+        context.setPrescription("");
+        context.setExamTime(firstNonBlank(examTime, toIsoOffset(decisionTime)));
+        context.setSourceNo(sourceNo);
+        context.setPreoperativeDiagnosisCodes(preoperativeDiagnosisCodes);
+        context.setPlannedOperationCodes(plannedOperationCodes);
+        context.setPerformedOperationCodes(performedOperationCodes);
+        return context;
+    }
+
+    private void putBusinessTime(EducationPushEventContext context, String fieldName, String value) {
+        LocalDateTime businessTime = EducationPushScheduleCalculator.parseBusinessTime(value);
+        if (businessTime == null) {
+            if (!defaultString(value).isBlank()) {
+                LOGGER.warn("业务时间解析失败: eventType={}, patientId={}, fieldName={}, value={}",
+                        context.getEventType(), context.getPatientId(), fieldName, value);
+            }
+            return;
+        }
+        context.putBusinessTime(fieldName, businessTime);
+    }
+
+    private List<String> extractDiagnosisCodes(List<QzDiagnosisItem> diagnoses) {
+        if (diagnoses == null) {
+            return List.of();
+        }
+        return diagnoses.stream()
+                .filter(Objects::nonNull)
+                .map(QzDiagnosisItem::getDiagnosisCode)
+                .map(this::defaultString)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .toList();
+    }
+
+    private String extractDiagnosisNames(List<QzDiagnosisItem> diagnoses) {
+        if (diagnoses == null) {
+            return "";
+        }
+        return diagnoses.stream()
+                .filter(Objects::nonNull)
+                .map(QzDiagnosisItem::getDiagnosisName)
+                .map(this::defaultString)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .distinct()
+                .collect(Collectors.joining("；"));
+    }
+
+    private List<String> extractOperationCodes(List<QzOperationItem> operations) {
+        if (operations == null) {
+            return List.of();
+        }
+        return operations.stream()
+                .filter(Objects::nonNull)
+                .map(QzOperationItem::getOperationCode)
+                .map(this::defaultString)
+                .map(String::trim)
+                .filter(value -> !value.isBlank())
+                .toList();
+    }
+
+    private String resolveExamTime(QzEducationPushRule rule, EducationPushEventContext context, LocalDateTime decisionTime) {
+        LocalDateTime anchorTime = context.getBusinessTime(rule.getAnchorField());
+        if (anchorTime != null) {
+            return toIsoOffset(anchorTime);
+        }
+        return firstNonBlank(context.getExamTime(), toIsoOffset(decisionTime));
+    }
+
+    private LocalDateTime resolveBaseTime(QzEducationPushRule rule, EducationPushEventContext context, LocalDateTime decisionTime) {
+        LocalDateTime anchorTime = context.getBusinessTime(rule.getAnchorField());
+        return anchorTime == null ? decisionTime : anchorTime;
+    }
+
     private List<String> resolveMedicineNames(QzHpPrescriptionRequest request) {
         List<String> result = new ArrayList<>();
         if (request.getMedicineItem() != null) {
@@ -215,6 +417,19 @@ public class EducationPushCoordinator {
             return normalizedPrimary;
         }
         return defaultString(fallback).trim();
+    }
+
+    private String firstNonBlank(String... values) {
+        if (values == null) {
+            return "";
+        }
+        for (String value : values) {
+            String normalizedValue = defaultString(value).trim();
+            if (!normalizedValue.isEmpty()) {
+                return normalizedValue;
+            }
+        }
+        return "";
     }
 
     private String defaultString(String value) {
