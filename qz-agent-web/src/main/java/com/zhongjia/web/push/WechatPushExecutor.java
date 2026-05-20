@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhongjia.biz.entity.WechatPushLog;
 import com.zhongjia.biz.service.WechatPushLogService;
 import com.zhongjia.biz.service.WechatPushSuccessRecordService;
+import com.zhongjia.web.config.PushTaskProperties;
 import com.zhongjia.web.config.QzHpProperties;
 import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.exception.BizException;
@@ -33,6 +34,7 @@ public class WechatPushExecutor {
     private final WechatPushProperties wechatPushProperties;
     private final WechatPushLogService wechatPushLogService;
     private final WechatPushSuccessRecordService wechatPushSuccessRecordService;
+    private final PushTaskProperties pushTaskProperties;
     private final ObjectMapper objectMapper;
 
     public WechatPushExecutor(
@@ -42,6 +44,7 @@ public class WechatPushExecutor {
             WechatPushProperties wechatPushProperties,
             WechatPushLogService wechatPushLogService,
             WechatPushSuccessRecordService wechatPushSuccessRecordService,
+            PushTaskProperties pushTaskProperties,
             ObjectMapper objectMapper
     ) {
         this.wechatMessageClient = wechatMessageClient;
@@ -50,6 +53,7 @@ public class WechatPushExecutor {
         this.wechatPushProperties = wechatPushProperties;
         this.wechatPushLogService = wechatPushLogService;
         this.wechatPushSuccessRecordService = wechatPushSuccessRecordService;
+        this.pushTaskProperties = pushTaskProperties;
         this.objectMapper = objectMapper;
     }
 
@@ -70,7 +74,7 @@ public class WechatPushExecutor {
     ) {
         String patientId = request == null ? "" : defaultString(request.getPatientId()).trim();
         String tag = request == null ? "" : defaultString(request.getTag()).trim();
-        if (wechatPushSuccessRecordService.hasSuccess(patientId, tag)) {
+        if (isSuccessDeduplicationEnabled() && wechatPushSuccessRecordService.hasSuccess(patientId, tag)) {
             LOGGER.info("推送已成功过，跳过重复推送: patientId={}, tag={}, sourceRuleCode={}, taskId={}",
                     patientId, tag, defaultString(sourceRuleCode), taskId);
             return PushExecutionResult.skipped();
@@ -99,7 +103,9 @@ public class WechatPushExecutor {
             log.setMessage(messageXml);
             log.setPushStatus(PushTaskConstants.TASK_STATUS_SUCCESS);
             wechatPushLogService.save(log);
-            wechatPushSuccessRecordService.recordSuccess(patientId, tag, sourceRuleCode, taskId, log.getId());
+            if (isSuccessDeduplicationEnabled()) {
+                wechatPushSuccessRecordService.recordSuccess(patientId, tag, sourceRuleCode, taskId, log.getId());
+            }
             return PushExecutionResult.pushed(data.getJumpLink());
         } catch (BizException ex) {
             if (log.getWechatApiCode() == null) {
@@ -194,6 +200,10 @@ public class WechatPushExecutor {
             return message;
         }
         return message.substring(0, 255);
+    }
+
+    private boolean isSuccessDeduplicationEnabled() {
+        return !pushTaskProperties.isTestMode();
     }
 
     private String defaultString(String value) {

@@ -2,6 +2,7 @@ package com.zhongjia.web.push;
 
 import com.zhongjia.biz.entity.QzEducationPushRule;
 import com.zhongjia.biz.service.WechatPushSuccessRecordService;
+import com.zhongjia.web.config.PushTaskProperties;
 import com.zhongjia.web.vo.qz.QzDiagnosisItem;
 import com.zhongjia.web.vo.qz.QzHpDiagnosisEventRequest;
 import com.zhongjia.web.vo.qz.QzHpMedicineItem;
@@ -33,17 +34,20 @@ public class EducationPushCoordinator {
     private final DelayedPushTaskService delayedPushTaskService;
     private final WechatPushExecutor wechatPushExecutor;
     private final WechatPushSuccessRecordService wechatPushSuccessRecordService;
+    private final PushTaskProperties pushTaskProperties;
 
     public EducationPushCoordinator(
             EducationPushRuleEngine ruleEngine,
             DelayedPushTaskService delayedPushTaskService,
             WechatPushExecutor wechatPushExecutor,
-            WechatPushSuccessRecordService wechatPushSuccessRecordService
+            WechatPushSuccessRecordService wechatPushSuccessRecordService,
+            PushTaskProperties pushTaskProperties
     ) {
         this.ruleEngine = ruleEngine;
         this.delayedPushTaskService = delayedPushTaskService;
         this.wechatPushExecutor = wechatPushExecutor;
         this.wechatPushSuccessRecordService = wechatPushSuccessRecordService;
+        this.pushTaskProperties = pushTaskProperties;
     }
 
     public void handleDiagnosisEvent(QzHpDiagnosisEventRequest request) {
@@ -195,7 +199,8 @@ public class EducationPushCoordinator {
             Object rawRequest,
             LocalDateTime decisionTime
     ) {
-        if (wechatPushSuccessRecordService.hasSuccess(context.getPatientId(), rule.getTag())) {
+        if (isSuccessDeduplicationEnabled()
+                && wechatPushSuccessRecordService.hasSuccess(context.getPatientId(), rule.getTag())) {
             LOGGER.info("宣教推送已成功过，不再处理: ruleCode={}, patientId={}, tag={}",
                     rule.getRuleCode(), context.getPatientId(), rule.getTag());
             return;
@@ -236,7 +241,8 @@ public class EducationPushCoordinator {
         }
 
         for (QzEducationPushRule delayedRule : delayedRules) {
-            if (wechatPushSuccessRecordService.hasSuccess(context.getPatientId(), delayedRule.getTag())) {
+            if (isSuccessDeduplicationEnabled()
+                    && wechatPushSuccessRecordService.hasSuccess(context.getPatientId(), delayedRule.getTag())) {
                 LOGGER.info("延时宣教推送已成功过，不再创建任务: patientId={}, tag={}, ruleCode={}",
                         context.getPatientId(), delayedRule.getTag(), delayedRule.getRuleCode());
                 continue;
@@ -405,6 +411,10 @@ public class EducationPushCoordinator {
 
     private boolean isIcd10(String diagnosisCodeSystem) {
         return "ICD-10".equalsIgnoreCase(defaultString(diagnosisCodeSystem).trim());
+    }
+
+    private boolean isSuccessDeduplicationEnabled() {
+        return !pushTaskProperties.isTestMode();
     }
 
     private String toIsoOffset(LocalDateTime time) {
