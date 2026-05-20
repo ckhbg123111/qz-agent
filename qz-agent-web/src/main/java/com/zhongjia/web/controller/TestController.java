@@ -30,6 +30,8 @@ public class TestController {
     private static final String CURL_URL = "http://192.168.50.19/csp/hsb/DHC.Published.PUB0039.BS.PUB0039.cls";
     private static final String SOAP_ACTION = "http://www.dhcc.com.cn/DHC.Published.PUB0039.BS.PUB0039.HIPMessageServer";
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String TEST_PATIENT_NAME = "测试患者";
+    private static final String TEST_GENDER = "未知";
 
     private final WechatMessageClient wechatMessageClient;
     private final WechatPushClient wechatPushClient;
@@ -98,11 +100,11 @@ public class TestController {
         WechatMessageRequest request = new WechatMessageRequest();
         request.setTag(defaultString(tag));
         request.setPatientId(defaultString(patientId));
-        request.setPatientName("");
-        request.setGender("");
+        request.setPatientName(TEST_PATIENT_NAME);
+        request.setGender(TEST_GENDER);
         request.setDiagnosis("");
         request.setPrescription("");
-        request.setExamTime("");
+        request.setExamTime(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
         request.setReminderContent("");
         return request;
     }
