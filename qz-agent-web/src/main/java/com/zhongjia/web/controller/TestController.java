@@ -1,12 +1,15 @@
 package com.zhongjia.web.controller;
 
 import com.zhongjia.web.config.WechatPushProperties;
-import com.zhongjia.web.exception.BizException;
+import com.zhongjia.web.integration.wechat.WechatMessageClient;
 import com.zhongjia.web.integration.wechat.WechatPushClient;
 import com.zhongjia.web.push.DelayedPushTaskService;
 import com.zhongjia.web.vo.Result;
 import com.zhongjia.web.vo.test.TestWechatCurlRequest;
 import com.zhongjia.web.vo.test.TestWechatPushRequest;
+import com.zhongjia.web.vo.wechat.WechatMessageRequest;
+import com.zhongjia.web.vo.wechat.WechatMessageResponse;
+import com.zhongjia.web.vo.wechat.WechatMessageResponseData;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 @RestController
 @RequestMapping("/api/test")
 @Tag(name = "Test", description = "联调测试接口")
@@ -23,19 +29,20 @@ public class TestController {
 
     private static final String CURL_URL = "http://192.168.50.19/csp/hsb/DHC.Published.PUB0039.BS.PUB0039.cls";
     private static final String SOAP_ACTION = "http://www.dhcc.com.cn/DHC.Published.PUB0039.BS.PUB0039.HIPMessageServer";
-    private static final String MESSAGE_TIME = "2026-03-17 10:00:00";
-    private static final String HIS_URL_PREFIX = "https://hp.aiqikang.com/h5/chat?code=";
-    private static final String HIS_URL_SUFFIX = "&amp;amp;cid=qzhospital&amp;amp;exp=1800930903&amp;amp;sign=PaXwbtjrQbbxRccUrCn0tpNz7wIR9nb0loejqk1joyU";
+    private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    private final WechatMessageClient wechatMessageClient;
     private final WechatPushClient wechatPushClient;
     private final WechatPushProperties wechatPushProperties;
     private final DelayedPushTaskService delayedPushTaskService;
 
     public TestController(
+            WechatMessageClient wechatMessageClient,
             WechatPushClient wechatPushClient,
             WechatPushProperties wechatPushProperties,
             DelayedPushTaskService delayedPushTaskService
     ) {
+        this.wechatMessageClient = wechatMessageClient;
         this.wechatPushClient = wechatPushClient;
         this.wechatPushProperties = wechatPushProperties;
         this.delayedPushTaskService = delayedPushTaskService;
@@ -57,18 +64,9 @@ public class TestController {
     }
 
     private String buildCurlCommand(String tag, String patientId) {
-        WechatCurlTemplate template = resolveCurlTemplate(tag);
-        String escapedTag = escapeXml(tag);
-        String messageXml = """
-                &lt;message&gt;&lt;first&gt;%s&lt;/first&gt;&lt;keyword1&gt;%s&lt;/keyword1&gt;&lt;keyword2&gt;%s&lt;/keyword2&gt;&lt;remark/&gt;&lt;hisURL&gt;%s%s%s&lt;/hisURL&gt;&lt;/message&gt;"""
-                .formatted(
-                        escapeXml(template.first()),
-                        MESSAGE_TIME,
-                        escapeXml(template.keyword2()),
-                        HIS_URL_PREFIX,
-                        escapedTag,
-                        HIS_URL_SUFFIX
-                );
+        String effectivePatientId = delayedPushTaskService.resolvePatientIdForPush(patientId);
+        WechatMessageResponse response = wechatMessageClient.fetchMessage(buildWechatRequest(tag, effectivePatientId));
+        String messageXml = buildPushMessageXml(response.getData());
 
         return """
                 curl -X POST "%s" \\
@@ -92,30 +90,37 @@ public class TestController {
                         SOAP_ACTION,
                         escapeXml(resolveBizcode(null)),
                         messageXml,
-                        escapeXml(patientId)
+                        escapeXml(effectivePatientId)
                 );
     }
 
-    private WechatCurlTemplate resolveCurlTemplate(String tag) {
-        return switch (tag) {
-            case "UUID_EXAMPLE_7" -> new WechatCurlTemplate(
-                    "二联疗法处方",
-                    "为您开具二联疗法处方，内含相关用药指导，点击卡片查看详情"
-            );
-            case "UUID_EXAMPLE_6" -> new WechatCurlTemplate(
-                    "四联疗法处方",
-                    "为您开具四联疗法处方，内含相关用药指导，点击卡片查看详情"
-            );
-            case "UUID_EXAMPLE_10" -> new WechatCurlTemplate(
-                    "复查提醒",
-                    "【幽门螺杆菌】您的复查时间将至，内含复查相关指引，点击卡片查看详情"
-            );
-            case "UUID_EXAMPLE_1" -> new WechatCurlTemplate(
-                    "已确诊幽门螺杆菌",
-                    "幽门螺杆菌检测前注意事项指南"
-            );
-            default -> throw new BizException(400, "不支持的tag: " + tag);
-        };
+    private WechatMessageRequest buildWechatRequest(String tag, String patientId) {
+        WechatMessageRequest request = new WechatMessageRequest();
+        request.setTag(defaultString(tag));
+        request.setPatientId(defaultString(patientId));
+        request.setPatientName("");
+        request.setGender("");
+        request.setDiagnosis("");
+        request.setPrescription("");
+        request.setExamTime("");
+        request.setReminderContent("");
+        return request;
+    }
+
+    private String buildPushMessageXml(WechatMessageResponseData data) {
+        String title = defaultString(data.getReplyTitle());
+        String description = defaultString(data.getReplyDescription());
+        String keyword2 = description.isBlank() ? title : description;
+        String pushTime = LocalDateTime.now().format(PUSH_TIME_FORMATTER);
+        String jumpLink = defaultString(data.getJumpLink());
+
+        return "<message>"
+                + "<first>" + escapeXml(title) + "</first>"
+                + "<keyword1>" + escapeXml(pushTime) + "</keyword1>"
+                + "<keyword2>" + escapeXml(keyword2) + "</keyword2>"
+                + "<remark/>"
+                + "<hisURL>" + escapeXml(jumpLink) + "</hisURL>"
+                + "</message>";
     }
 
     private String escapeXml(String value) {
@@ -140,6 +145,7 @@ public class TestController {
         return "yytz";
     }
 
-    private record WechatCurlTemplate(String first, String keyword2) {
+    private String defaultString(String value) {
+        return value == null ? "" : value;
     }
 }
