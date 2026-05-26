@@ -8,6 +8,7 @@ import com.zhongjia.web.config.QzHpProperties;
 import com.zhongjia.web.config.WechatPushProperties;
 import com.zhongjia.web.exception.BizException;
 import com.zhongjia.web.integration.wechat.WechatMessageClient;
+import com.zhongjia.web.integration.wechat.WechatPushClient;
 import com.zhongjia.web.push.DelayedPushTaskService;
 import com.zhongjia.web.push.EducationPushCoordinator;
 import com.zhongjia.web.push.PushTaskConstants;
@@ -46,6 +47,7 @@ public class QzHpInterfaceController {
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final WechatMessageClient wechatMessageClient;
+    private final WechatPushClient wechatPushClient;
     private final QzHpProperties qzHpProperties;
     private final WechatPushProperties wechatPushProperties;
     private final WechatPushLogService wechatPushLogService;
@@ -55,6 +57,7 @@ public class QzHpInterfaceController {
 
     public QzHpInterfaceController(
             WechatMessageClient wechatMessageClient,
+            WechatPushClient wechatPushClient,
             QzHpProperties qzHpProperties,
             WechatPushProperties wechatPushProperties,
             WechatPushLogService wechatPushLogService,
@@ -63,6 +66,7 @@ public class QzHpInterfaceController {
             EducationPushCoordinator educationPushCoordinator
     ) {
         this.wechatMessageClient = wechatMessageClient;
+        this.wechatPushClient = wechatPushClient;
         this.qzHpProperties = qzHpProperties;
         this.wechatPushProperties = wechatPushProperties;
         this.wechatPushLogService = wechatPushLogService;
@@ -169,8 +173,8 @@ public class QzHpInterfaceController {
             String messageXml = buildPushMessageXml(data);
             log.setMessage(messageXml);
 
-//            wechatPushClient.pushMessage(bizcode, log.getPatientId(), messageXml);
-            log.setPushStatus("WAITING TEST");
+            wechatPushClient.pushMessage(bizcode, log.getPatientId(), messageXml);
+            log.setPushStatus(PushTaskConstants.TASK_STATUS_SUCCESS);
             wechatPushLogService.save(log);
             return data.getJumpLink();
         } catch (BizException ex) {
