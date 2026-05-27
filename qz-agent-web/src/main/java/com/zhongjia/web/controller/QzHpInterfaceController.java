@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 
 @RestController
@@ -44,6 +45,7 @@ public class QzHpInterfaceController {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QzHpInterfaceController.class);
 
+    private static final ZoneId SHANGHAI_ZONE_ID = ZoneId.of("Asia/Shanghai");
     private static final DateTimeFormatter PUSH_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final WechatMessageClient wechatMessageClient;
@@ -159,7 +161,7 @@ public class QzHpInterfaceController {
         log.setPushStatus("FAIL");
         log.setMessage("");
         log.setRequestJson(toRequestJson(rawRequest));
-        log.setCreateTime(LocalDateTime.now());
+        log.setCreateTime(LocalDateTime.now(SHANGHAI_ZONE_ID));
 
         try {
             if (log.getPatientId().isBlank()) {
@@ -221,7 +223,7 @@ public class QzHpInterfaceController {
 
     private String defaultExamTime(String value) {
         if (value == null || value.isBlank()) {
-            return OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+            return OffsetDateTime.now(SHANGHAI_ZONE_ID).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
         }
         return value;
     }
@@ -249,7 +251,7 @@ public class QzHpInterfaceController {
         String title = defaultString(data.getReplyTitle());
         String description = defaultString(data.getReplyDescription());
         String keyword2 = description.isBlank() ? title : description;
-        String pushTime = LocalDateTime.now().format(PUSH_TIME_FORMATTER);
+        String pushTime = LocalDateTime.now(SHANGHAI_ZONE_ID).format(PUSH_TIME_FORMATTER);
         String jumpLink = defaultString(data.getJumpLink());
 
         return "<message>"
